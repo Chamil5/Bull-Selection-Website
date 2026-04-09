@@ -1,0 +1,7 @@
+# bulls.csv
+ID,Name,EPD_Weight,EPD_Milk,EPD_Quality
+1,Bull A,75,20,5.1
+2,Bull B,60,25,4.7
+3,Bull C,80,15,6.0
+4,Bull D,70,30,5.5
+5,Bull E,85,10,4.3
