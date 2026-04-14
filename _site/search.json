@@ -5,5 +5,12 @@
     "title": "About",
     "section": "",
     "text": "About this site\n\n1 + 1\n\n[1] 2"
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Bull Selection Website",
+    "section": "",
+    "text": "# Load necessary packages\nlibrary(shiny)\nlibrary(dplyr)\n\n\nAttaching package: 'dplyr'\n\n\nThe following objects are masked from 'package:stats':\n\n    filter, lag\n\n\nThe following objects are masked from 'package:base':\n\n    intersect, setdiff, setequal, union\n\n# Load your bulls data\nbulls &lt;- read.csv(\"bulls.csv\")\n\n# Define UI for application\nui &lt;- fluidPage(\n  \n  titlePanel(\"Bull EPD Selection\"),\n  \n  sidebarLayout(\n    sidebarPanel(\n      sliderInput(\"weightInput\", \"Weight EPD:\", \n                  min = min(bulls$EPD_Weight), \n                  max = max(bulls$EPD_Weight), \n                  value = c(min(bulls$EPD_Weight), max(bulls$EPD_Weight))),\n      sliderInput(\"milkInput\", \"Milk EPD:\", \n                  min = min(bulls$EPD_Milk), \n                  max = max(bulls$EPD_Milk), \n                  value = c(min(bulls$EPD_Milk), max(bulls$EPD_Milk))),\n      sliderInput(\"qualityInput\", \"Quality EPD:\", \n                  min = min(bulls$EPD_Quality), \n                  max = max(bulls$EPD_Quality), \n                  value = c(min(bulls$EPD_Quality), max(bulls$EPD_Quality))),\n      actionButton(\"filterButton\", \"Filter Bulls\")\n    ),\n    \n    mainPanel(\n      tableOutput(\"bullTable\")\n    )\n  )\n)\n\n# Define server logic\nserver &lt;- function(input, output) {\n  filteredBulls &lt;- reactiveVal(bulls)\n\n  observeEvent(input$filterButton, {\n    filteredBulls(bulls %&gt;%\n      filter(EPD_Weight &gt;= input$weightInput[1],\n             EPD_Weight &lt;= input$weightInput[2],\n             EPD_Milk &gt;= input$milkInput[1],\n             EPD_Milk &lt;= input$milkInput[2],\n             EPD_Quality &gt;= input$qualityInput[1],\n             EPD_Quality &lt;= input$qualityInput[2]))\n  })\n  \n  output$bullTable &lt;- renderTable({\n    filteredBulls()\n  })\n}\n\n\n# Run the application \nshinyApp(ui = ui, server = server)\n\nShiny applications not supported in static R Markdown documents"
   }
 ]
