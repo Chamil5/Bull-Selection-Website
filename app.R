@@ -2,9 +2,14 @@
 library(shiny)
 library(dplyr)
 library(pdftools)
+library(shinyjs)  # Load shinyjs for additional features
+
+# Set maximum request size to 200 MB
+options(shiny.maxRequestSize = 500 * 1024^2)  # 200 MB
 
 # Define UI for application
 ui <- fluidPage(
+    useShinyjs(),  # Enable shinyjs functionality
     
     # Include custom CSS for styling
     tags$head(
@@ -40,7 +45,8 @@ ui <- fluidPage(
         sidebarPanel(
             class = "sidebar",
             fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
-                      accept = c("application/pdf")),
+                      accept = c("application/pdf"),
+                      multiple = FALSE),  # Change for multiple files if needed
             actionButton("extractButton", "Extract EPDs"),
             uiOutput("slides"),
             sliderInput("weightInput", "Weight EPD:", 
@@ -49,7 +55,8 @@ ui <- fluidPage(
                         min = 0, max = 100, value = c(0, 100)),
             sliderInput("qualityInput", "Quality EPD:", 
                         min = 0, max = 10, value = c(0, 10)),
-            actionButton("filterButton", "Filter Bulls")
+            actionButton("filterButton", "Filter Bulls"),
+            htmlOutput("progress")  # Place to show progress messages
         ),
         
         mainPanel(
@@ -66,11 +73,15 @@ server <- function(input, output) {
     observeEvent(input$extractButton, {
         req(input$pdfInput)  # Ensure a file is uploaded
         
+        # Display progress message
+        output$progress <- renderText("Extracting EPDs, please wait...")
+        shinyjs::disable("extractButton")  # Disable button to prevent multiple clicks
+        
         # Read PDF and extract text
         text <- pdf_text(input$pdfInput$datapath)
         extracted_data <- unlist(strsplit(text, "\n"))
         
-        # Regex to extract EPDs (you may need to adjust this based on your PDF structure)
+        # Regex to extract EPDs
         epd_pattern <- "ID: (\\d+), Name: ([A-Za-z\\s]+), Weight: (\\d+), Milk: (\\d+), Quality: (\\d+\\.\\d+)"
         bulls_data <- data.frame(matrix(NA, ncol=5, nrow=0))
         colnames(bulls_data) <- c("ID", "Name", "EPD_Weight", "EPD_Milk", "EPD_Quality")
@@ -110,6 +121,10 @@ server <- function(input, output) {
                 )
             }
         })
+        
+        # Clear progress message
+        output$progress <- renderText("EPDs extracted successfully!")
+        shinyjs::enable("extractButton")  # Re-enable button
     })
     
     filteredBulls <- reactiveVal(data.frame())
