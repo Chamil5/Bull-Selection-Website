@@ -5,10 +5,10 @@ library(pdftools)
 library(shinyjs)  # Load shinyjs for additional features
 
 # Set maximum request size to 200 MB 45
-<<<<<<< HEAD
-=======
+HEAD
+
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
->>>>>>> abea8c4f9692ef32dec819c6419c554af69e5405
+ abea8c4f9692ef32dec819c6419c554af69e5405
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 
 # Define UI for application
