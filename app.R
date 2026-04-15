@@ -4,10 +4,6 @@ library(dplyr)
 library(pdftools)
 library(shinyjs)  # Load shinyjs for additional features
 
-# Set maximum request size to 200 MB
-options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
-
-
 # Define UI for application
 ui <- fluidPage(
     useShinyjs(),  # Enable shinyjs functionality
@@ -131,24 +127,13 @@ server <- function(input, output) {
     filteredBulls <- reactiveVal(data.frame())
     
     observeEvent(input$filterButton, {
-        # Filter bulls based on the selected EPD criteria
-        filtered_data <- bulls() %>%
-            filter(EPD_Weight >= input$weightInput[1],
-                   EPD_Weight <= input$weightInput[2],
-                   EPD_Milk >= input$milkInput[1],
-                   EPD_Milk <= input$milkInput[2],
-                   EPD_Quality >= input$qualityInput[1],
-                   EPD_Quality <= input$qualityInput[2])
-        
-        # Update the reactive value with filtered data
-        filteredBulls(filtered_data)
-        
-        # Show a message if no bulls are found
-        if (nrow(filtered_data) == 0) {
-            output$progress <- renderText("No bulls match the selected criteria.")
-        } else {
-            output$progress <- renderText("Bulls filtered successfully!")
-        }
+        filteredBulls(bulls() %>%
+                          filter(EPD_Weight >= input$weightInput[1],
+                                 EPD_Weight <= input$weightInput[2],
+                                 EPD_Milk >= input$milkInput[1],
+                                 EPD_Milk <= input$milkInput[2],
+                                 EPD_Quality >= input$qualityInput[1],
+                                 EPD_Quality <= input$qualityInput[2]))
     })
     
     output$bullTable <- renderTable({
