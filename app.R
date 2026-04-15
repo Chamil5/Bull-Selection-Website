@@ -4,18 +4,14 @@ library(dplyr)
 library(pdftools)
 library(shinyjs)  # Load shinyjs for additional features
 
-# Set maximum request size to 200 MB 45
-HEAD
-
-options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
- abea8c4f9692ef32dec819c6419c554af69e5405
+# Set maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 
 # Define UI for application
 ui <- fluidPage(
     useShinyjs(),  # Enable shinyjs functionality
     
-    # Include custom CSS for stylingas
+    # Include custom CSS for styling
     tags$head(
         tags$style(HTML("
             body {
