@@ -11,7 +11,7 @@ options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 ui <- fluidPage(
     useShinyjs(),  # Enable shinyjs functionality
     
-    # Include custom CSS for styling
+    # Include custom CSS for stylingas
     tags$head(
         tags$style(HTML("
             body {
