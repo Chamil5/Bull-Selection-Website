@@ -22,14 +22,7 @@ ui <- fluidPage(
             hr(),
             h4("Filter EPDs"),
             checkboxGroupInput("selectedTraits", "Select EPD Traits to Filter By", 
-                               choices = c("Weight",
-                                           "Milk",
-                                           "Quality",
-                                           "REA",
-                                           "MARB",
-                                           "FAT",
-                                           "YLD",
-                                           "CW")),
+                               choices = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW")),
             sliderInput("weightRange", "Weight (lbs)", 0, 2000, c(0, 2000)),
             sliderInput("milkRange", "Milk", 0, 100, c(0, 100)),
             sliderInput("qualityRange", "Quality", 0, 100, c(0, 100)),
@@ -61,10 +54,10 @@ server <- function(input, output) {
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             full_text <- paste(pdf_text_content, collapse = " ")  # Combine all pages' text
             
-            # Regex pattern to capture relevant EPD fields
-            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
+            # Enhanced regex pattern to capture relevant EPD fields
+            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]+)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
             
-            matches <- gregexpr(pattern, full_text)
+            matches <- gregexpr(pattern, full_text, perl = TRUE)
             found_bulls <- regmatches(full_text, matches)
             
             # Create an empty data frame for the bull data
@@ -88,7 +81,7 @@ server <- function(input, output) {
                     if (length(values) >= 10) {
                         bulls_data <- rbind(bulls_data, data.frame(
                             ID = as.integer(values[1]),
-                            Name = trimws(sub("ID:\\s*\\d+\\s*Name:\\s*", "", bull)),
+                            Name = trimws(sub(".*Name:\\s*", "", bull)),
                             Weight = as.numeric(values[2]),
                             Milk = as.numeric(values[3]),
                             Quality = as.numeric(values[4]),
@@ -103,6 +96,7 @@ server <- function(input, output) {
                 }
             }
             
+            # Store extracted data
             bulls(bulls_data)
             output$progress <- renderText(ifelse(nrow(bulls_data) == 0, "No EPDs found in the provided PDF.", "EPDs extracted successfully!"))
             
