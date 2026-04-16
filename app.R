@@ -30,14 +30,14 @@ ui <- fluidPage(
                                            "FAT",
                                            "YLD",
                                            "CW")),
-            sliderInput("weightRange", "Weight (lbs)", min = 0, max = 2000, value = c(0, 2000)),
-            sliderInput("milkRange", "Milk", min = 0, max = 100, value = c(0, 100)),
-            sliderInput("qualityRange", "Quality", min = 0, max = 100, value = c(0, 100)),
-            sliderInput("reaRange", "REA", min = 0, max = 100, value = c(0, 100)),
-            sliderInput("marbRange", "MARB", min = 0, max = 100, value = c(0, 100)),
-            sliderInput("fatRange", "FAT", min = 0, max = 10, value = c(0, 10)),
-            sliderInput("yldRange", "YLD", min = 0, max = 100, value = c(0, 100)),
-            sliderInput("cwRange", "CW", min = 0, max = 1000, value = c(0, 1000))
+            sliderInput("weightRange", "Weight (lbs)", 0, 2000, c(0, 2000)),
+            sliderInput("milkRange", "Milk", 0, 100, c(0, 100)),
+            sliderInput("qualityRange", "Quality", 0, 100, c(0, 100)),
+            sliderInput("reaRange", "REA", 0, 100, c(0, 100)),
+            sliderInput("marbRange", "MARB", 0, 100, c(0, 100)),
+            sliderInput("fatRange", "FAT", 0, 10, c(0, 10)),
+            sliderInput("yldRange", "YLD", 0, 100, c(0, 100)),
+            sliderInput("cwRange", "CW", 0, 1000, c(0, 1000))
         ),
         
         mainPanel(
@@ -67,6 +67,7 @@ server <- function(input, output) {
             matches <- gregexpr(pattern, full_text)
             found_bulls <- regmatches(full_text, matches)
             
+            # Create an empty data frame for the bull data
             bulls_data <- data.frame(ID = integer(),
                                      Name = character(),
                                      Weight = numeric(),
@@ -79,7 +80,7 @@ server <- function(input, output) {
                                      CW = numeric(),
                                      stringsAsFactors = FALSE)
             
-            # Iterate over each found bull to populate the data frame
+            # Populate the data frame with extracted data
             for (bull in found_bulls[[1]]) {
                 if (nchar(bull) > 0) {
                     values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
