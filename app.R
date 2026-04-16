@@ -1,5 +1,4 @@
 library(shiny)
-library(pdftools)
 library(shinyjs)
 library(dplyr)
 
@@ -46,25 +45,38 @@ server <- function(input, output) {
     observeEvent(input$extractButton, {
         req(input$pdfInput)
         
-        output$progress <- renderText("Extracting EPDs, please wait...")
+        output$progress <- renderText("Converting PDF to Text, please wait...")
         shinyjs::disable("extractButton")  # Disable button during processing
         
+        # Generate a temporary text file path
+        temp_txt_file <- tempfile(fileext = ".txt")
+        
+        # Attempt to convert PDF to text using pdftotext
         tryCatch({
-            # Step 1: Read entire PDF content from all pages
-            pdf_text_content <- pdf_text(input$pdfInput$datapath)
-            full_text <- paste(pdf_text_content, collapse = " ")  # Combine all pages' text
+            # Create command line to run pdftotext
+            command <- sprintf("pdftotext '%s' '%s'", input$pdfInput$datapath, temp_txt_file)
+            system(command)
             
-            # Debugging output: Uncomment to inspect extracted text
+            # Check if the text file exists and has content
+            if (!file.exists(temp_txt_file) || file.info(temp_txt_file)$size == 0) {
+                stop("The PDF contains no readable text after conversion.")
+            }
+            
+            # Read the converted text file
+            full_text <- readLines(temp_txt_file, warn = FALSE)
+            full_text <- paste(full_text, collapse = " ")  # Combine all lines into a single string
+            
+            # Debugging output: Print the full text to console for inspection
             # cat(full_text)
             
-            # Step 2: Improved regex pattern to capture EPD fields more flexibly
+            # Regex pattern to extract EPD fields
             pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]+?)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
             
             matches <- gregexpr(pattern, full_text, perl = TRUE)
             found_bulls <- regmatches(full_text, matches)
             found_bulls <- unlist(found_bulls)
             
-            # Step 3: Create an empty data frame for the bull data
+            # Create an empty data frame to collect bull data
             bulls_data <- data.frame(ID = integer(),
                                      Name = character(),
                                      Weight = numeric(),
@@ -77,13 +89,10 @@ server <- function(input, output) {
                                      CW = numeric(),
                                      stringsAsFactors = FALSE)
             
-            # Step 4: Populate the data frame with extracted data
+            # Populate the data frame with extracted data
             for (bull in found_bulls) {
                 if (nchar(bull) > 0) {
-                    # Split the raw data using regex to capture numeric values and names
                     values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
-                    
-                    # Check if there are enough fields extracted
                     if (length(values) >= 9) {
                         name_match <- gsub("ID:\\s*\\d+\\s*Name:\\s*|\\s*Weight:.*", "", bull)
                         bulls_data <- rbind(bulls_data, data.frame(
@@ -103,7 +112,7 @@ server <- function(input, output) {
                 }
             }
             
-            # Step 5: Store extracted data
+            # Store extracted data
             bulls(bulls_data)
             output$progress <- renderText(ifelse(nrow(bulls_data) == 0, "No EPDs found in the provided PDF.", "EPDs extracted successfully!"))
             
@@ -134,7 +143,6 @@ server <- function(input, output) {
                                           "YLD" = input$yldRange,
                                           "CW" = input$cwRange)
                     
-                    # Check if the range inputs are valid
                     if (!is.null(range_input)) {
                         filtered_bulls <- filtered_bulls %>%
                             filter(get(trait) >= range_input[1] & get(trait) <= range_input[2])
