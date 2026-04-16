@@ -96,8 +96,8 @@ server <- function(input, output) {
                     yld_match <- regmatches(line, regexpr("YLD:\\s*(\\d+)", line))
                     cw_match <- regmatches(line, regexpr("CW:\\s*(\\d+)", line))
                     
-                    # Only proceed if ID is found
-                    if (!is.na(id_match) && nchar(id_match) > 0) {
+                    # Only proceed if ID is found and is valid
+                    if (length(id_match) > 0 && nchar(id_match) > 0) {
                         id <- as.integer(sub("ID:\\s*", "", id_match))
                         name <- sub("Name:\\s*", "", name_match)
                         weight <- as.numeric(sub("Weight:\\s*", "", weight_match))
@@ -150,48 +150,56 @@ server <- function(input, output) {
         # Apply filtering based on selected traits and their ranges
         if ("Weight" %in% input$selectedTraits) {
             filtered_bulls <- filter(filtered_bulls,
+                                     !is.na(Weight),
                                      Weight >= input$weightRange[1],
                                      Weight <= input$weightRange[2])
         }
         
         if ("Milk" %in% input$selectedTraits) {
             filtered_bulls <- filter(filtered_bulls,
+                                     !is.na(Milk),
                                      Milk >= input$milkRange[1],
                                      Milk <= input$milkRange[2])
         }
         
         if ("Quality" %in% input$selectedTraits) {
             filtered_bulls <- filter(filtered_bulls,
+                                     !is.na(Quality),
                                      Quality >= input$qualityRange[1],
                                      Quality <= input$qualityRange[2])
         }
         
         if ("REA" %in% input$selectedTraits) {
             filtered_bulls <- filter(filtered_bulls,
+                                     !is.na(REA),
                                      REA >= input$reaRange[1],
                                      REA <= input$reaRange[2])
         }
         
         if ("MARB" %in% input$selectedTraits) {
             filtered_bulls <- filter(filtered_bulls,
+                                     !is.na(MARB),
                                      MARB >= input$marbRange[1],
                                      MARB <= input$marbRange[2])
         }
         
         if ("FAT" %in% input$selectedTraits) {
             filtered_bulls <- filter(filtered_bulls,
+                                     !is.na(FAT),
                                      FAT >= input$fatRange[1],
                                      FAT <= input$fatRange[2])
         }
         
         if ("YLD" %in% input$selectedTraits) {
             filtered_bulls <- filter(filtered_bulls,
+                                     !is.na(YLD),
                                      YLD >= input$yldRange[1],
                                      YLD <= input$yldRange[2])
         }
         
         if ("CW" %in% input$selectedTraits) {
             filtered_bulls <- filter(filtered_bulls,
+                                     !is.na(CW),
                                      CW >= input$cwRange[1],
                                      CW <= input$cwRange[2])
         }
