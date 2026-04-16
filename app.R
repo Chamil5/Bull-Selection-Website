@@ -1,8 +1,7 @@
 library(shiny)
 library(shinyjs)
 library(dplyr)
-library(tesseract)
-library(magick)
+
 
 # Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
