@@ -60,10 +60,11 @@ server <- function(input, output) {
         tryCatch({
             # Read PDF content
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
+            full_text <- paste(pdf_text_content, collapse = " ")
             
-            # Debug: Check the first few lines of the extracted PDF
-            cat("Extracted PDF content:\n")
-            cat(substr(pdf_text_content, 1, 500), "\n")  # Print first 500 characters
+            # Debug: check the first few hundred characters of the text
+            cat("Extracted PDF content (first 500 chars):\n")
+            cat(substr(full_text, 1, 500), "\n")
             
             # Initialize the data frame to store extracted EPDs
             bulls_data <- data.frame(ID = integer(),
@@ -78,54 +79,35 @@ server <- function(input, output) {
                                      CW = numeric(),
                                      stringsAsFactors = FALSE)
             
-            # Process each page of the PDF
-            for (page_text in pdf_text_content) {
-                lines <- strsplit(page_text, "\n")[[1]]  # Split page text into lines
-                
-                for (line in lines) {
-                    # Extract values for each trait using regex
-                    id_match <- regmatches(line, regexpr("ID:\\s*(\\d+)", line))
-                    name_match <- regmatches(line, regexpr("Name:\\s*([^,]*)", line))
-                    weight_match <- regmatches(line, regexpr("Weight:\\s*(\\d+)", line))
-                    milk_match <- regmatches(line, regexpr("Milk:\\s*(\\d+)", line))
-                    quality_match <- regmatches(line, regexpr("Quality:\\s*(\\d+)", line))
-                    rea_match <- regmatches(line, regexpr("REA:\\s*(\\d+)", line))
-                    marb_match <- regmatches(line, regexpr("MARB:\\s*(\\d+)", line))
-                    fat_match <- regmatches(line, regexpr("FAT:\\s*(\\d+)", line))
-                    yld_match <- regmatches(line, regexpr("YLD:\\s*(\\d+)", line))
-                    cw_match <- regmatches(line, regexpr("CW:\\s*(\\d+)", line))
+            # Use regex to match EPD data.
+            # Adjust the pattern to match your specific data format.
+            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
+            
+            matches <- gregexpr(pattern, full_text)
+            found_bulls <- regmatches(full_text, matches)
+            
+            # Process all found bulls
+            for (bull in found_bulls[[1]]) {
+                if (nchar(bull) > 0) {
+                    values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
                     
-                    # Only proceed if ID is found and is valid
-                    if (length(id_match) > 0 && nchar(id_match) > 0) {
-                        id <- as.integer(sub("ID:\\s*", "", id_match))
-                        name <- sub("Name:\\s*", "", name_match)
-                        weight <- as.numeric(sub("Weight:\\s*", "", weight_match))
-                        milk <- as.numeric(sub("Milk:\\s*", "", milk_match))
-                        quality <- as.numeric(sub("Quality:\\s*", "", quality_match))
-                        rea <- as.numeric(sub("REA:\\s*", "", rea_match))
-                        marb <- as.numeric(sub("MARB:\\s*", "", marb_match))
-                        fat <- as.numeric(sub("FAT:\\s*", "", fat_match))
-                        yld <- as.numeric(sub("YLD:\\s*", "", yld_match))
-                        cw <- as.numeric(sub("CW:\\s*", "", cw_match))
-                        
-                        # Debug: Print extracted values
-                        cat(sprintf("Extracted: ID=%d, Name=%s, Weight=%s, Milk=%s, Quality=%s, REA=%s, MARB=%s, FAT=%s, YLD=%s, CW=%s\n",
-                                    id, name, weight, milk, quality, rea, marb, fat, yld, cw))
-                        
-                        # Add extracted data to bulls_data
+                    if (length(values) >= 10) {  # Ensure we have at least 10 values
                         bulls_data <- rbind(bulls_data, data.frame(
-                            ID = id,
-                            Name = name,
-                            Weight = weight,
-                            Milk = milk,
-                            Quality = quality,
-                            REA = rea,
-                            MARB = marb,
-                            FAT = fat,
-                            YLD = yld,
-                            CW = cw,
+                            ID = as.integer(values[1]),
+                            Name = trimws(sub("ID:\\s*\\d+\\s*Name:\\s*", "", bull)),
+                            Weight = as.numeric(values[2]),
+                            Milk = as.numeric(values[3]),
+                            Quality = as.numeric(values[4]),
+                            REA = as.numeric(values[5]),
+                            MARB = as.numeric(values[6]),
+                            FAT = as.numeric(values[7]),
+                            YLD = as.numeric(values[8]),
+                            CW = as.numeric(values[9]),
                             stringsAsFactors = FALSE
                         ))
+                        # Debug: Print extracted values
+                        cat(sprintf("Extracted: ID=%s, Name=%s, Weight=%s, Milk=%s, Quality=%s, REA=%s, MARB=%s, FAT=%s, YLD=%s, CW=%s\n",
+                                    values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9]))
                     }
                 }
             }
