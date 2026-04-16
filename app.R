@@ -1,8 +1,9 @@
 library(shiny)
 library(pdftools)
 library(shinyjs)
+library(dplyr)
 
-# Set maximum request size to 200 MB
+# Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 
 # Define UI for the application
@@ -20,6 +21,15 @@ ui <- fluidPage(
             htmlOutput("progress"),
             hr(),
             h4("Filter EPDs"),
+            checkboxGroupInput("selectedTraits", "Select EPD Traits to Filter By", 
+                               choices = c("Weight",
+                                           "Milk",
+                                           "Quality",
+                                           "REA",
+                                           "MARB",
+                                           "FAT",
+                                           "YLD",
+                                           "CW")),
             sliderInput("weightRange", "Weight (lbs)", min = 0, max = 2000, value = c(0, 2000)),
             sliderInput("milkRange", "Milk", min = 0, max = 100, value = c(0, 100)),
             sliderInput("qualityRange", "Quality", min = 0, max = 100, value = c(0, 100)),
@@ -51,6 +61,7 @@ server <- function(input, output) {
             # Read PDF content
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             
+            # Check for empty PDF or extraction errors
             if (length(pdf_text_content) == 0) {
                 stop("PDF file is empty or could not be read.")
             }
@@ -73,33 +84,45 @@ server <- function(input, output) {
                 lines <- strsplit(page_text, "\n")[[1]]  # Split page text into lines
                 
                 for (line in lines) {
-                    if (grepl("ID:|Name:|Weight:|Milk:|Quality:|REA:|MARB:|FAT:|YLD:|CW:", line)) {
-                        id <- as.integer(sub(".*ID:\\s*(\\d+).*", "\\1", line))
-                        name <- sub(".*Name:\\s*([^,]*).*", "\\1", line)
-                        weight <- as.numeric(sub(".*Weight:\\s*(\\d+).*", "\\1", line))
-                        milk <- as.numeric(sub(".*Milk:\\s*(\\d+).*", "\\1", line))
-                        quality <- as.numeric(sub(".*Quality:\\s*(\\d+).*", "\\1", line))
-                        rea <- as.numeric(sub(".*REA:\\s*(\\d+).*", "\\1", line))
-                        marb <- as.numeric(sub(".*MARB:\\s*(\\d+).*", "\\1", line))
-                        fat <- as.numeric(sub(".*FAT:\\s*(\\d+).*", "\\1", line))
-                        yld <- as.numeric(sub(".*YLD:\\s*(\\d+).*", "\\1", line))
-                        cw <- as.numeric(sub(".*CW:\\s*(\\d+).*", "\\1", line))
+                    # Extract values for each trait using regex
+                    id_match <- regmatches(line, regexpr("ID:\\s*(\\d+)", line))
+                    name_match <- regmatches(line, regexpr("Name:\\s*([^,]*)", line))
+                    weight_match <- regmatches(line, regexpr("Weight:\\s*(\\d+)", line))
+                    milk_match <- regmatches(line, regexpr("Milk:\\s*(\\d+)", line))
+                    quality_match <- regmatches(line, regexpr("Quality:\\s*(\\d+)", line))
+                    rea_match <- regmatches(line, regexpr("REA:\\s*(\\d+)", line))
+                    marb_match <- regmatches(line, regexpr("MARB:\\s*(\\d+)", line))
+                    fat_match <- regmatches(line, regexpr("FAT:\\s*(\\d+)", line))
+                    yld_match <- regmatches(line, regexpr("YLD:\\s*(\\d+)", line))
+                    cw_match <- regmatches(line, regexpr("CW:\\s*(\\d+)", line))
+                    
+                    # Only proceed if ID is found
+                    if (!is.na(id_match) && nchar(id_match) > 0) {
+                        id <- as.integer(sub("ID:\\s*", "", id_match))
+                        name <- sub("Name:\\s*", "", name_match)
+                        weight <- as.numeric(sub("Weight:\\s*", "", weight_match))
+                        milk <- as.numeric(sub("Milk:\\s*", "", milk_match))
+                        quality <- as.numeric(sub("Quality:\\s*", "", quality_match))
+                        rea <- as.numeric(sub("REA:\\s*", "", rea_match))
+                        marb <- as.numeric(sub("MARB:\\s*", "", marb_match))
+                        fat <- as.numeric(sub("FAT:\\s*", "", fat_match))
+                        yld <- as.numeric(sub("YLD:\\s*", "", yld_match))
+                        cw <- as.numeric(sub("CW:\\s*", "", cw_match))
                         
-                        if (!is.na(id)) {
-                            bulls_data <- rbind(bulls_data, data.frame(
-                                ID = id,
-                                Name = name,
-                                Weight = weight,
-                                Milk = milk,
-                                Quality = quality,
-                                REA = rea,
-                                MARB = marb,
-                                FAT = fat,
-                                YLD = yld,
-                                CW = cw,
-                                stringsAsFactors = FALSE
-                            ))
-                        }
+                        # Add extracted data to bulls_data
+                        bulls_data <- rbind(bulls_data, data.frame(
+                            ID = id,
+                            Name = name,
+                            Weight = weight,
+                            Milk = milk,
+                            Quality = quality,
+                            REA = rea,
+                            MARB = marb,
+                            FAT = fat,
+                            YLD = yld,
+                            CW = cw,
+                            stringsAsFactors = FALSE
+                        ))
                     }
                 }
             }
@@ -122,18 +145,56 @@ server <- function(input, output) {
     output$bullTable <- renderTable({
         req(bulls())
         
-        # Filtering based on slider inputs
-        filtered_bulls <- bulls() %>%
-            filter(
-                Weight >= input$weightRange[1], Weight <= input$weightRange[2],
-                Milk >= input$milkRange[1], Milk <= input$milkRange[2],
-                Quality >= input$qualityRange[1], Quality <= input$qualityRange[2],
-                REA >= input$reaRange[1], REA <= input$reaRange[2],
-                MARB >= input$marbRange[1], MARB <= input$marbRange[2],
-                FAT >= input$fatRange[1], FAT <= input$fatRange[2],
-                YLD >= input$yldRange[1], YLD <= input$yldRange[2],
-                CW >= input$cwRange[1], CW <= input$cwRange[2]
-            )
+        filtered_bulls <- bulls()
+        
+        # Apply filtering based on selected traits and their ranges
+        if ("Weight" %in% input$selectedTraits) {
+            filtered_bulls <- filter(filtered_bulls,
+                                     Weight >= input$weightRange[1],
+                                     Weight <= input$weightRange[2])
+        }
+        
+        if ("Milk" %in% input$selectedTraits) {
+            filtered_bulls <- filter(filtered_bulls,
+                                     Milk >= input$milkRange[1],
+                                     Milk <= input$milkRange[2])
+        }
+        
+        if ("Quality" %in% input$selectedTraits) {
+            filtered_bulls <- filter(filtered_bulls,
+                                     Quality >= input$qualityRange[1],
+                                     Quality <= input$qualityRange[2])
+        }
+        
+        if ("REA" %in% input$selectedTraits) {
+            filtered_bulls <- filter(filtered_bulls,
+                                     REA >= input$reaRange[1],
+                                     REA <= input$reaRange[2])
+        }
+        
+        if ("MARB" %in% input$selectedTraits) {
+            filtered_bulls <- filter(filtered_bulls,
+                                     MARB >= input$marbRange[1],
+                                     MARB <= input$marbRange[2])
+        }
+        
+        if ("FAT" %in% input$selectedTraits) {
+            filtered_bulls <- filter(filtered_bulls,
+                                     FAT >= input$fatRange[1],
+                                     FAT <= input$fatRange[2])
+        }
+        
+        if ("YLD" %in% input$selectedTraits) {
+            filtered_bulls <- filter(filtered_bulls,
+                                     YLD >= input$yldRange[1],
+                                     YLD <= input$yldRange[2])
+        }
+        
+        if ("CW" %in% input$selectedTraits) {
+            filtered_bulls <- filter(filtered_bulls,
+                                     CW >= input$cwRange[1],
+                                     CW <= input$cwRange[2])
+        }
         
         filtered_bulls
     })
