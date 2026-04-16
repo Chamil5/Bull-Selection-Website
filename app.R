@@ -17,7 +17,17 @@ ui <- fluidPage(
                       accept = c("application/pdf"), 
                       multiple = FALSE),
             actionButton("extractButton", "Extract EPDs"),
-            htmlOutput("progress")  # To show progress messages
+            htmlOutput("progress"),
+            hr(),
+            h4("Filter EPDs"),
+            sliderInput("weightRange", "Weight (lbs)", min = 0, max = 2000, value = c(0, 2000)),
+            sliderInput("milkRange", "Milk", min = 0, max = 100, value = c(0, 100)),
+            sliderInput("qualityRange", "Quality", min = 0, max = 100, value = c(0, 100)),
+            sliderInput("reaRange", "REA", min = 0, max = 100, value = c(0, 100)),
+            sliderInput("marbRange", "MARB", min = 0, max = 100, value = c(0, 100)),
+            sliderInput("fatRange", "FAT", min = 0, max = 10, value = c(0, 10)),
+            sliderInput("yldRange", "YLD", min = 0, max = 100, value = c(0, 100)),
+            sliderInput("cwRange", "CW", min = 0, max = 1000, value = c(0, 1000))
         ),
         
         mainPanel(
@@ -45,7 +55,7 @@ server <- function(input, output) {
                 stop("PDF file is empty or could not be read.")
             }
             
-            # Initialize data frame to store extracted EPDs
+            # Initialize the data frame to store extracted EPDs
             bulls_data <- data.frame(ID = integer(),
                                      Name = character(),
                                      Weight = numeric(),
@@ -62,13 +72,8 @@ server <- function(input, output) {
             for (page_text in pdf_text_content) {
                 lines <- strsplit(page_text, "\n")[[1]]  # Split page text into lines
                 
-                # Debug: Check content of the first few lines
-                print(head(lines))
-                
                 for (line in lines) {
-                    # Check if this line looks like it contains EPD information
                     if (grepl("ID:|Name:|Weight:|Milk:|Quality:|REA:|MARB:|FAT:|YLD:|CW:", line)) {
-                        # Attempt to extract values using string manipulation
                         id <- as.integer(sub(".*ID:\\s*(\\d+).*", "\\1", line))
                         name <- sub(".*Name:\\s*([^,]*).*", "\\1", line)
                         weight <- as.numeric(sub(".*Weight:\\s*(\\d+).*", "\\1", line))
@@ -80,7 +85,6 @@ server <- function(input, output) {
                         yld <- as.numeric(sub(".*YLD:\\s*(\\d+).*", "\\1", line))
                         cw <- as.numeric(sub(".*CW:\\s*(\\d+).*", "\\1", line))
                         
-                        # Add to data frame if ID is not NA
                         if (!is.na(id)) {
                             bulls_data <- rbind(bulls_data, data.frame(
                                 ID = id,
@@ -116,7 +120,22 @@ server <- function(input, output) {
     })
     
     output$bullTable <- renderTable({
-        bulls()
+        req(bulls())
+        
+        # Filtering based on slider inputs
+        filtered_bulls <- bulls() %>%
+            filter(
+                Weight >= input$weightRange[1], Weight <= input$weightRange[2],
+                Milk >= input$milkRange[1], Milk <= input$milkRange[2],
+                Quality >= input$qualityRange[1], Quality <= input$qualityRange[2],
+                REA >= input$reaRange[1], REA <= input$reaRange[2],
+                MARB >= input$marbRange[1], MARB <= input$marbRange[2],
+                FAT >= input$fatRange[1], FAT <= input$fatRange[2],
+                YLD >= input$yldRange[1], YLD <= input$yldRange[2],
+                CW >= input$cwRange[1], CW <= input$cwRange[2]
+            )
+        
+        filtered_bulls
     })
 }
 
