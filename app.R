@@ -2,7 +2,6 @@ library(shiny)
 library(shinyjs)
 library(dplyr)
 
-
 # Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 
@@ -52,76 +51,74 @@ server <- function(input, output) {
         # Generate a temporary text file path
         temp_txt_file <- tempfile(fileext = ".txt")
         
-        # Attempt to convert PDF to images using pdftocairo
-        # This will convert each page of the PDF to an image
-        img_dir <- tempdir()  # Create a temp directory for images
-        pdf_file <- input$pdfInput$datapath
-        
-        command <- sprintf("pdftocairo -png '%s' '%s/page'", pdf_file, img_dir)
-        system(command, ignore.stdout = TRUE, ignore.stderr = TRUE)
-        
-        # Use Tesseract to read the images
-        image_files <- list.files(img_dir, pattern = "\\.png$", full.names = TRUE)
-        
-        full_text <- ""
-        for (image_file in image_files) {
-            text <- tesseract::ocr(image_file)
-            full_text <- paste(full_text, text, sep = " ")
-        }
-        
-        # Check if any readable text has been extracted
-        if (nchar(full_text) == 0) {
-            output$progress <- renderText("No readable text found after OCR extraction.")
-            shinyjs::enable("extractButton")  # Re-enable button after processing
-            return()
-        }
-        
-        # Regex pattern to extract EPD fields
-        pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]+?)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
-        
-        matches <- gregexpr(pattern, full_text, perl = TRUE)
-        found_bulls <- regmatches(full_text, matches)
-        found_bulls <- unlist(found_bulls)
-        
-        # Create an empty data frame to collect bull data
-        bulls_data <- data.frame(ID = integer(),
-                                 Name = character(),
-                                 Weight = numeric(),
-                                 Milk = numeric(),
-                                 Quality = numeric(),
-                                 REA = numeric(),
-                                 MARB = numeric(),
-                                 FAT = numeric(),
-                                 YLD = numeric(),
-                                 CW = numeric(),
-                                 stringsAsFactors = FALSE)
-        
-        # Populate the data frame with extracted data
-        for (bull in found_bulls) {
-            if (nchar(bull) > 0) {
-                values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
-                if (length(values) >= 9) {
-                    name_match <- gsub("ID:\\s*\\d+\\s*Name:\\s*|\\s*Weight:.*", "", bull)
-                    bulls_data <- rbind(bulls_data, data.frame(
-                        ID = as.integer(values[1]),
-                        Name = trimws(name_match),
-                        Weight = as.numeric(values[2]),
-                        Milk = as.numeric(values[3]),
-                        Quality = as.numeric(values[4]),
-                        REA = as.numeric(values[5]),
-                        MARB = as.numeric(values[6]),
-                        FAT = as.numeric(values[7]),
-                        YLD = as.numeric(values[8]),
-                        CW = as.numeric(values[9]),
-                        stringsAsFactors = FALSE
-                    ))
+        # Attempt to convert PDF to text using pdftotext
+        tryCatch({
+            # Create command line to run pdftotext
+            command <- sprintf("pdftotext '%s' '%s'", input$pdfInput$datapath, temp_txt_file)
+            system(command)
+            
+            # Check if the text file exists and has content
+            if (!file.exists(temp_txt_file) || file.info(temp_txt_file)$size == 0) {
+                stop("The PDF contains no readable text after conversion.")
+            }
+            
+            # Read the converted text file
+            full_text <- readLines(temp_txt_file, warn = FALSE)
+            full_text <- paste(full_text, collapse = " ")  # Combine all lines into a single string
+            
+            # Debugging output: Print the full text to console for inspection
+            # cat(full_text)
+            
+            # Regex pattern to extract EPD fields
+            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]+?)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
+            
+            matches <- gregexpr(pattern, full_text, perl = TRUE)
+            found_bulls <- regmatches(full_text, matches)
+            found_bulls <- unlist(found_bulls)
+            
+            # Create an empty data frame to collect bull data
+            bulls_data <- data.frame(ID = integer(),
+                                     Name = character(),
+                                     Weight = numeric(),
+                                     Milk = numeric(),
+                                     Quality = numeric(),
+                                     REA = numeric(),
+                                     MARB = numeric(),
+                                     FAT = numeric(),
+                                     YLD = numeric(),
+                                     CW = numeric(),
+                                     stringsAsFactors = FALSE)
+            
+            # Populate the data frame with extracted data
+            for (bull in found_bulls) {
+                if (nchar(bull) > 0) {
+                    values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
+                    if (length(values) >= 9) {
+                        name_match <- gsub("ID:\\s*\\d+\\s*Name:\\s*|\\s*Weight:.*", "", bull)
+                        bulls_data <- rbind(bulls_data, data.frame(
+                            ID = as.integer(values[1]),
+                            Name = trimws(name_match),
+                            Weight = as.numeric(values[2]),
+                            Milk = as.numeric(values[3]),
+                            Quality = as.numeric(values[4]),
+                            REA = as.numeric(values[5]),
+                            MARB = as.numeric(values[6]),
+                            FAT = as.numeric(values[7]),
+                            YLD = as.numeric(values[8]),
+                            CW = as.numeric(values[9]),
+                            stringsAsFactors = FALSE
+                        ))
+                    }
                 }
             }
-        }
-        
-        # Store extracted data
-        bulls(bulls_data)
-        output$progress <- renderText(ifelse(nrow(bulls_data) == 0, "No EPDs found in the provided PDF.", "EPDs extracted successfully!"))
+            
+            # Store extracted data
+            bulls(bulls_data)
+            output$progress <- renderText(ifelse(nrow(bulls_data) == 0, "No EPDs found in the provided PDF.", "EPDs extracted successfully!"))
+            
+        }, error = function(e) {
+            output$progress <- renderText(paste("Error:", conditionMessage(e)))
+        })
         
         shinyjs::enable("extractButton")  # Re-enable button after processing
     })
@@ -156,7 +153,7 @@ server <- function(input, output) {
         
         # Display a message if no bulls are found matching the criteria
         if (nrow(filtered_bulls) == 0) {
-            return(data.frame(Message = "No bulls found matching these criteria."));
+            return(data.frame(Message = "No bulls found matching these criteria."))
         }
         
         filtered_bulls
