@@ -34,8 +34,7 @@ ui <- fluidPage(
         ),
         
         mainPanel(
-            tableOutput("bullTable"),
-            verbatimTextOutput("rawTextOutput")  # Debug information for raw PDF text
+            tableOutput("bullTable")
         )
     )
 )
@@ -55,12 +54,7 @@ server <- function(input, output) {
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             full_text <- paste(pdf_text_content, collapse = " ")  # Combine all pages' text
             
-            # Debug: Show raw text for inspection
-            output$rawTextOutput <- renderPrint({
-                cat(full_text)  # Show the full text extracted
-            })
-            
-            # Regex pattern adjusted for flexibility
+            # Improved regex to capture EPD fields
             pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
             
             matches <- gregexpr(pattern, full_text, perl = TRUE)
@@ -84,7 +78,7 @@ server <- function(input, output) {
                 if (nchar(bull) > 0) {
                     values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
                     
-                    # Check if we have 10 expected numeric values
+                    # Ensure we have valid data
                     if (length(values) >= 10) {
                         name_match <- sub("ID:\\s*\\d+\\s*Name:\\s*", "", bull)
                         bulls_data <- rbind(bulls_data, data.frame(
@@ -121,7 +115,7 @@ server <- function(input, output) {
         # Get the current bulls data
         filtered_bulls <- bulls()
         
-        # Check for selected traits
+        # Apply filtering based on selected traits
         if (!is.null(input$selectedTraits) && length(input$selectedTraits) > 0) {
             for (trait in input$selectedTraits) {
                 if (trait %in% names(filtered_bulls)) {
@@ -144,6 +138,7 @@ server <- function(input, output) {
             }
         }
         
+        # Display a message if no bulls are found matching the criteria
         if (nrow(filtered_bulls) == 0) {
             return(data.frame(Message = "No bulls found matching these criteria."))
         }
