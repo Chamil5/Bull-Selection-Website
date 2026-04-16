@@ -6,7 +6,7 @@ library(dplyr)
 # Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 
-# Define UI for the application
+# Define the UI for the application
 ui <- fluidPage(
     useShinyjs(),
     
@@ -116,9 +116,9 @@ server <- function(input, output) {
         
         filtered_bulls <- bulls()
         
-        # Apply filtering based on selected traits and their ranges
-        for (trait in input$selectedTraits) {
-            if (trait %in% names(filtered_bulls)) {
+        # Check for selected traits and apply filters dynamically
+        if (length(input$selectedTraits) > 0) {
+            for (trait in input$selectedTraits) {
                 range_input <- switch(trait,
                                       "Weight" = input$weightRange,
                                       "Milk" = input$milkRange,
@@ -131,11 +131,14 @@ server <- function(input, output) {
                 
                 if (!is.null(range_input)) {
                     filtered_bulls <- filtered_bulls %>%
-                        filter(!is.na(get(trait)), 
-                               get(trait) >= range_input[1], 
+                        filter(get(trait) >= range_input[1], 
                                get(trait) <= range_input[2])
                 }
             }
+        }
+        
+        if (nrow(filtered_bulls) == 0) {
+            return(data.frame(Message = "No bulls found matching these criteria."))
         }
         
         filtered_bulls
