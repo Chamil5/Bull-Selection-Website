@@ -2,6 +2,7 @@
 library(shiny)
 library(dplyr)
 library(pdftools)
+library(shinyjs)
   
 
 # Set maximum request size to 200 MB
