@@ -1,7 +1,8 @@
 library(shiny)
 library(shinyjs)
 library(dplyr)
-
+library(tesseract)
+library(magick)
 
 # Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
@@ -49,23 +50,27 @@ server <- function(input, output) {
         output$progress <- renderText("Converting PDF to Text, please wait...")
         shinyjs::disable("extractButton")  # Disable button during processing
         
-        # Generate a temporary text file path
-        temp_txt_file <- tempfile(fileext = ".txt")
-        
-        # Attempt to convert PDF to images using pdftocairo
-        # This will convert each page of the PDF to an image
-        img_dir <- tempdir()  # Create a temp directory for images
+        # Create temporary directory for images
+        img_dir <- tempdir()  
         pdf_file <- input$pdfInput$datapath
         
+        # Convert PDF to images using pdftocairo
         command <- sprintf("pdftocairo -png '%s' '%s/page'", pdf_file, img_dir)
         system(command, ignore.stdout = TRUE, ignore.stderr = TRUE)
         
-        # Use Tesseract to read the images
+        # Use Tesseract to read the images with preprocessing
         image_files <- list.files(img_dir, pattern = "\\.png$", full.names = TRUE)
         
         full_text <- ""
         for (image_file in image_files) {
-            text <- tesseract::ocr(image_file)
+            # Load the image
+            img <- image_read(image_file)
+            
+            # Preprocess the image (optional: adjust quality, thresholding, etc.)
+            img <- image_flatten(image_background(img, "white"))
+            
+            # Perform OCR
+            text <- tesseract::ocr(img)
             full_text <- paste(full_text, text, sep = " ")
         }
         
