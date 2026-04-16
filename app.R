@@ -57,9 +57,9 @@ server <- function(input, output) {
         shinyjs::disable("extractButton")  # Disable button during processing
         
         tryCatch({
-            # Read PDF content
+            # Read entire PDF content from all pages
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
-            full_text <- paste(pdf_text_content, collapse = " ")
+            full_text <- paste(pdf_text_content, collapse = " ")  # Combine all pages' text
             
             # Regex pattern to capture relevant EPD fields
             pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
@@ -79,6 +79,7 @@ server <- function(input, output) {
                                      CW = numeric(),
                                      stringsAsFactors = FALSE)
             
+            # Iterate over each found bull to populate the data frame
             for (bull in found_bulls[[1]]) {
                 if (nchar(bull) > 0) {
                     values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
