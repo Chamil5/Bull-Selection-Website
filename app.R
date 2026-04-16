@@ -2,8 +2,7 @@ library(shiny)
 library(dplyr)
 library(pdftools)
 library(shinyjs)
-library(promises)
-library(future)
+
 
 # Plan with future package to run tasks in the background
 plan(multiprocess)
