@@ -61,10 +61,9 @@ server <- function(input, output) {
             # Read PDF content
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             
-            # Check for empty PDF or extraction errors
-            if (length(pdf_text_content) == 0) {
-                stop("PDF file is empty or could not be read.")
-            }
+            # Debug: Check the first few lines of the extracted PDF
+            cat("Extracted PDF content:\n")
+            cat(substr(pdf_text_content, 1, 500), "\n")  # Print first 500 characters
             
             # Initialize the data frame to store extracted EPDs
             bulls_data <- data.frame(ID = integer(),
@@ -108,6 +107,10 @@ server <- function(input, output) {
                         fat <- as.numeric(sub("FAT:\\s*", "", fat_match))
                         yld <- as.numeric(sub("YLD:\\s*", "", yld_match))
                         cw <- as.numeric(sub("CW:\\s*", "", cw_match))
+                        
+                        # Debug: Print extracted values
+                        cat(sprintf("Extracted: ID=%d, Name=%s, Weight=%s, Milk=%s, Quality=%s, REA=%s, MARB=%s, FAT=%s, YLD=%s, CW=%s\n",
+                                    id, name, weight, milk, quality, rea, marb, fat, yld, cw))
                         
                         # Add extracted data to bulls_data
                         bulls_data <- rbind(bulls_data, data.frame(
