@@ -56,17 +56,17 @@ server <- function(input, output) {
         output$progress <- renderText("Extracting EPDs, please wait...")
         shinyjs::disable("extractButton")  # Disable button during processing
         
-        # Try to read and extract EPDs from the uploaded PDF
         tryCatch({
             # Read PDF content
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             full_text <- paste(pdf_text_content, collapse = " ")
             
-            # Debug: check the first few hundred characters of the text
-            cat("Extracted PDF content (first 500 chars):\n")
-            cat(substr(full_text, 1, 500), "\n")
+            # Regex pattern to capture relevant EPD fields
+            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
             
-            # Initialize the data frame to store extracted EPDs
+            matches <- gregexpr(pattern, full_text)
+            found_bulls <- regmatches(full_text, matches)
+            
             bulls_data <- data.frame(ID = integer(),
                                      Name = character(),
                                      Weight = numeric(),
@@ -79,19 +79,11 @@ server <- function(input, output) {
                                      CW = numeric(),
                                      stringsAsFactors = FALSE)
             
-            # Use regex to match EPD data.
-            # Adjust the pattern to match your specific data format.
-            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
-            
-            matches <- gregexpr(pattern, full_text)
-            found_bulls <- regmatches(full_text, matches)
-            
-            # Process all found bulls
             for (bull in found_bulls[[1]]) {
                 if (nchar(bull) > 0) {
                     values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
                     
-                    if (length(values) >= 10) {  # Ensure we have at least 10 values
+                    if (length(values) >= 10) {
                         bulls_data <- rbind(bulls_data, data.frame(
                             ID = as.integer(values[1]),
                             Name = trimws(sub("ID:\\s*\\d+\\s*Name:\\s*", "", bull)),
@@ -105,21 +97,13 @@ server <- function(input, output) {
                             CW = as.numeric(values[9]),
                             stringsAsFactors = FALSE
                         ))
-                        # Debug: Print extracted values
-                        cat(sprintf("Extracted: ID=%s, Name=%s, Weight=%s, Milk=%s, Quality=%s, REA=%s, MARB=%s, FAT=%s, YLD=%s, CW=%s\n",
-                                    values[1], values[2], values[3], values[4], values[5], values[6], values[7], values[8], values[9]))
                     }
                 }
             }
             
-            # Update the reactive variable with the extracted data
             bulls(bulls_data)
+            output$progress <- renderText(ifelse(nrow(bulls_data) == 0, "No EPDs found in the provided PDF.", "EPDs extracted successfully!"))
             
-            if (nrow(bulls_data) == 0) {
-                output$progress <- renderText("No EPDs found in the provided PDF.")
-            } else {
-                output$progress <- renderText("EPDs extracted successfully!")
-            }
         }, error = function(e) {
             output$progress <- renderText(paste("Error:", conditionMessage(e)))
         })
@@ -133,60 +117,25 @@ server <- function(input, output) {
         filtered_bulls <- bulls()
         
         # Apply filtering based on selected traits and their ranges
-        if ("Weight" %in% input$selectedTraits) {
-            filtered_bulls <- filter(filtered_bulls,
-                                     !is.na(Weight),
-                                     Weight >= input$weightRange[1],
-                                     Weight <= input$weightRange[2])
-        }
-        
-        if ("Milk" %in% input$selectedTraits) {
-            filtered_bulls <- filter(filtered_bulls,
-                                     !is.na(Milk),
-                                     Milk >= input$milkRange[1],
-                                     Milk <= input$milkRange[2])
-        }
-        
-        if ("Quality" %in% input$selectedTraits) {
-            filtered_bulls <- filter(filtered_bulls,
-                                     !is.na(Quality),
-                                     Quality >= input$qualityRange[1],
-                                     Quality <= input$qualityRange[2])
-        }
-        
-        if ("REA" %in% input$selectedTraits) {
-            filtered_bulls <- filter(filtered_bulls,
-                                     !is.na(REA),
-                                     REA >= input$reaRange[1],
-                                     REA <= input$reaRange[2])
-        }
-        
-        if ("MARB" %in% input$selectedTraits) {
-            filtered_bulls <- filter(filtered_bulls,
-                                     !is.na(MARB),
-                                     MARB >= input$marbRange[1],
-                                     MARB <= input$marbRange[2])
-        }
-        
-        if ("FAT" %in% input$selectedTraits) {
-            filtered_bulls <- filter(filtered_bulls,
-                                     !is.na(FAT),
-                                     FAT >= input$fatRange[1],
-                                     FAT <= input$fatRange[2])
-        }
-        
-        if ("YLD" %in% input$selectedTraits) {
-            filtered_bulls <- filter(filtered_bulls,
-                                     !is.na(YLD),
-                                     YLD >= input$yldRange[1],
-                                     YLD <= input$yldRange[2])
-        }
-        
-        if ("CW" %in% input$selectedTraits) {
-            filtered_bulls <- filter(filtered_bulls,
-                                     !is.na(CW),
-                                     CW >= input$cwRange[1],
-                                     CW <= input$cwRange[2])
+        for (trait in input$selectedTraits) {
+            if (trait %in% names(filtered_bulls)) {
+                range_input <- switch(trait,
+                                      "Weight" = input$weightRange,
+                                      "Milk" = input$milkRange,
+                                      "Quality" = input$qualityRange,
+                                      "REA" = input$reaRange,
+                                      "MARB" = input$marbRange,
+                                      "FAT" = input$fatRange,
+                                      "YLD" = input$yldRange,
+                                      "CW" = input$cwRange)
+                
+                if (!is.null(range_input)) {
+                    filtered_bulls <- filtered_bulls %>%
+                        filter(!is.na(get(trait)), 
+                               get(trait) >= range_input[1], 
+                               get(trait) <= range_input[2])
+                }
+            }
         }
         
         filtered_bulls
