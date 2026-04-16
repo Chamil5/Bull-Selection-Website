@@ -2,11 +2,6 @@ library(shiny)
 library(dplyr)
 library(pdftools)
 library(shinyjs)
-library(promises)
-library(future)
-
-# Plan with future package to run tasks in the background
-plan(multiprocess)
 
 # Set maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
@@ -18,29 +13,29 @@ ui <- fluidPage(
     # Include custom CSS for styling
     tags$head(
         tags$style(HTML("
-            body {
-                background-color: #f5f5dc;  /* Light beige background */
-                font-family: 'Georgia', serif; /* Stylish font */
-            }
-            .btn {
-                background-color: #8b5a2b; /* Saddle brown button */
-                color: white;
-            }
-            .sidebar {
-                background-color: #d2b48c; /* Tan sidebar */
-                border: 2px solid #8b5a2b; /* Saddle brown border */
-                padding: 15px;
-            }
-            h1 {
-                color: #8b4513; /* Saddle brown for headings */
-            }
-            th {
-                background-color: #deb887; /* Burlywood header */
-            }
-            td {
-                background-color: #fff8dc; /* Cornsilk body */
-            }
-        "))
+      body {
+          background-color: #f5f5dc;  /* Light beige background */
+          font-family: 'Georgia', serif; /* Stylish font */
+      }
+      .btn {
+          background-color: #8b5a2b; /* Saddle brown button */
+          color: white;
+      }
+      .sidebar {
+          background-color: #d2b48c; /* Tan sidebar */
+          border: 2px solid #8b5a2b; /* Saddle brown border */
+          padding: 15px;
+      }
+      h1 {
+          color: #8b4513; /* Saddle brown for headings */
+      }
+      th {
+          background-color: #deb887; /* Burlywood header */
+      }
+      td {
+          background-color: #fff8dc; /* Cornsilk body */
+      }
+    "))
     ),
     
     titlePanel("Bull EPD Selection"),
@@ -90,8 +85,8 @@ server <- function(input, output) {
         output$progress <- renderText("Extracting EPDs, please wait...")
         shinyjs::disable("extractButton")  # Disable button to prevent multiple clicks
         
-        # Use future and promises to read PDF in the background
-        future({
+        # Error handling within PDF reading and extraction
+        tryCatch({
             # Read PDF and extract text
             text <- pdf_text(input$pdfInput$datapath)
             extracted_data <- unlist(strsplit(text, "\n"))
@@ -118,20 +113,56 @@ server <- function(input, output) {
                                                    stringsAsFactors = FALSE))
                 }
             }
-            return(bulls_data)
-        }) %...>% {
-            # Process the result once it's ready
-            req(.)
-            bulls(.)
+            
+            # Update the bulls data frame
+            bulls(bulls_data)
+            
+            # Dynamically update slider inputs based on the new data
+            output$slides <- renderUI({
+                if (nrow(bulls()) > 0) {
+                    tagList(
+                        sliderInput("weightInput", "Weight EPD:", 
+                                    min = min(bulls()$EPD_Weight), 
+                                    max = max(bulls()$EPD_Weight), 
+                                    value = c(min(bulls()$EPD_Weight), max(bulls()$EPD_Weight))),
+                        sliderInput("milkInput", "Milk EPD:", 
+                                    min = min(bulls()$EPD_Milk), 
+                                    max = max(bulls()$EPD_Milk), 
+                                    value = c(min(bulls()$EPD_Milk), max(bulls()$EPD_Milk))),
+                        sliderInput("qualityInput", "Quality EPD:", 
+                                    min = min(bulls()$EPD_Quality), 
+                                    max = max(bulls()$EPD_Quality), 
+                                    value = c(min(bulls()$EPD_Quality), max(bulls()$EPD_Quality))),
+                        sliderInput("reaInput", "Ribeye Area (REA) EPD:", 
+                                    min = min(bulls()$EPD_REA), 
+                                    max = max(bulls()$EPD_REA), 
+                                    value = c(min(bulls()$EPD_REA), max(bulls()$EPD_REA))),
+                        sliderInput("marbInput", "Marbling Score (MARB) EPD:", 
+                                    min = min(bulls()$EPD_MARB), 
+                                    max = max(bulls()$EPD_MARB), 
+                                    value = c(min(bulls()$EPD_MARB), max(bulls()$EPD_MARB))),
+                        sliderInput("fatInput", "Fat Thickness (FAT) EPD:", 
+                                    min = min(bulls()$EPD_FAT), 
+                                    max = max(bulls()$EPD_FAT), 
+                                    value = c(min(bulls()$EPD_FAT), max(bulls()$EPD_FAT))),
+                        sliderInput("yieldInput", "Yield Grade (YLD) EPD:", 
+                                    min = min(bulls()$EPD_YLD), 
+                                    max = max(bulls()$EPD_YLD), 
+                                    value = c(min(bulls()$EPD_YLD), max(bulls()$EPD_YLD))),
+                        sliderInput("cwInput", "Carcass Weight (CW) EPD:", 
+                                    min = min(bulls()$EPD_CW), 
+                                    max = max(bulls()$EPD_CW), 
+                                    value = c(min(bulls()$EPD_CW), max(bulls()$EPD_CW)))
+                    )
+                }
+            })
+            
             output$progress <- renderText("EPDs extracted successfully!")
-            shinyjs::enable("extractButton")  # Re-enable button
-        } %...!% {
-            error_handler <- function(e) {
-                output$progress <- renderText(paste("Error:", conditionMessage(e)))
-                shinyjs::enable("extractButton")  # Re-enable button
-            }
-            error_handler(.)
-        }
+        }, error = function(e) {  # Handle errors here
+            output$progress <- renderText(paste("Error:", conditionMessage(e)))
+        })
+        
+        shinyjs::enable("extractButton")  # Re-enable button after processing
     })
     
     filteredBulls <- reactiveVal(data.frame())
