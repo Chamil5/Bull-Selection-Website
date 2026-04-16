@@ -18,7 +18,6 @@ ui <- fluidPage(
                       accept = c("application/pdf"), 
                       multiple = FALSE),
             actionButton("extractButton", "Extract EPDs"),
-            uiOutput("slides"),
             htmlOutput("progress")  # To show progress messages
         ),
         
@@ -44,44 +43,46 @@ server <- function(input, output) {
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             
             if (length(pdf_text_content) == 0) {
-                stop("PDF is empty or can't be read.")
-            }
-            
-            # Combine the PDF text into a single string for processing
-            all_text <- paste(pdf_text_content, collapse = "\n")
-            
-            # Regular expression pattern to extract EPDs - Adjust according to your PDF format
-            epd_pattern <- "ID: (\\d+).*?Name: ([^,]+).*?Weight: (\\d+).*?Milk: (\\d+).*?Quality: (\\d+\\.\\d+).*?REA: (\\d+\\.\\d+).*?MARB: (\\d+\\.\\d+).*?FAT: (\\d+\\.\\d+).*?YLD: (\\d+\\.\\d+).*?CW: (\\d+)"
-            matches <- gregexpr(epd_pattern, all_text, perl = TRUE)
-            extracted <- regmatches(all_text, matches)
-            
-            # Check if any matches were found
-            if (length(extracted) == 0 || all(sapply(extracted, length) == 0)) {
-                stop("No EPDs found in the provided PDF.")
+                stop("PDF file is empty or could not be read.")
             }
             
             # Data frame to store extracted EPDs
-            bulls_data <- data.frame(matrix(NA, ncol=10, nrow=0))
-            colnames(bulls_data) <- c("ID", "Name", "Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW")
+            bulls_data <- data.frame(ID = integer(),
+                                     Name = character(),
+                                     Weight = numeric(),
+                                     Milk = numeric(),
+                                     Quality = numeric(),
+                                     REA = numeric(),
+                                     MARB = numeric(),
+                                     FAT = numeric(),
+                                     YLD = numeric(),
+                                     CW = numeric(),
+                                     stringsAsFactors = FALSE)
             
-            # Loop over matches and populate the data frame
-            for (text_line in extracted) {
-                for (epd_line in text_line) {
-                    match <- regexec(epd_pattern, epd_line)
-                    groups <- regmatches(epd_line, match)
-                    if (length(groups[[1]]) > 0) {
-                        bulls_data <- rbind(bulls_data,
-                                            data.frame(ID = as.integer(groups[[1]][2]),
-                                                       Name = as.character(groups[[1]][3]),
-                                                       Weight = as.numeric(groups[[1]][4]),
-                                                       Milk = as.numeric(groups[[1]][5]),
-                                                       Quality = as.numeric(groups[[1]][6]),
-                                                       REA = as.numeric(groups[[1]][7]),
-                                                       MARB = as.numeric(groups[[1]][8]),
-                                                       FAT = as.numeric(groups[[1]][9]),
-                                                       YLD = as.numeric(groups[[1]][10]),
-                                                       CW = as.numeric(groups[[1]][11]),
-                                                       stringsAsFactors = FALSE))
+            # Process each page of the PDF
+            for (page_text in pdf_text_content) {
+                lines <- strsplit(page_text, "\n")[[1]]  # Split page text into lines
+                
+                for (line in lines) {
+                    # Use a regex pattern to capture EPD details
+                    epd_pattern <- "ID: (\\d+), Name: ([A-Za-z\\s]+), Weight: (\\d+), Milk: (\\d+), Quality: (\\d+\\.?\\d*), REA: (\\d+\\.?\\d*), MARB: (\\d+\\.?\\d*), FAT: (\\d+\\.?\\d*), YLD: (\\d+\\.?\\d*), CW: (\\d+)"
+                    if (grepl(epd_pattern, line)) {
+                        match <- regexec(epd_pattern, line)
+                        groups <- regmatches(line, match)
+                        if (length(groups[[1]]) > 0) {
+                            bulls_data <- rbind(bulls_data,
+                                                data.frame(ID = as.integer(groups[[1]][2]),
+                                                           Name = as.character(groups[[1]][3]),
+                                                           Weight = as.numeric(groups[[1]][4]),
+                                                           Milk = as.numeric(groups[[1]][5]),
+                                                           Quality = as.numeric(groups[[1]][6]),
+                                                           REA = as.numeric(groups[[1]][7]),
+                                                           MARB = as.numeric(groups[[1]][8]),
+                                                           FAT = as.numeric(groups[[1]][9]),
+                                                           YLD = as.numeric(groups[[1]][10]),
+                                                           CW = as.numeric(groups[[1]][11]),
+                                                           stringsAsFactors = FALSE))
+                        }
                     }
                 }
             }
@@ -89,7 +90,11 @@ server <- function(input, output) {
             # Update the reactive variable with the extracted data
             bulls(bulls_data)
             
-            output$progress <- renderText("EPDs extracted successfully!")
+            if (nrow(bulls_data) == 0) {
+                output$progress <- renderText("No EPDs found in the provided PDF.")
+            } else {
+                output$progress <- renderText("EPDs extracted successfully!")
+            }
         }, error = function(e) {
             output$progress <- renderText(paste("Error:", conditionMessage(e)))
         })
