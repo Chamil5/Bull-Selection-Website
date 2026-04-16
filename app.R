@@ -1,9 +1,8 @@
-# Load necessary packages
+
 library(shiny)
 library(dplyr)
 library(pdftools)
 library(shinyjs)
-
 
 # Set maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
@@ -56,6 +55,16 @@ ui <- fluidPage(
                         min = 0, max = 100, value = c(0, 100)),
             sliderInput("qualityInput", "Quality EPD:", 
                         min = 0, max = 10, value = c(0, 10)),
+            sliderInput("reaInput", "Ribeye Area (REA) EPD:", 
+                        min = 0, max = 100, value = c(0, 100)),
+            sliderInput("marbInput", "Marbling Score (MARB) EPD:", 
+                        min = 0, max = 10, value = c(0, 10)),
+            sliderInput("fatInput", "Fat Thickness (FAT) EPD:", 
+                        min = 0, max = 5, value = c(0, 5)),
+            sliderInput("yieldInput", "Yield Grade (YLD) EPD:", 
+                        min = 0, max = 5, value = c(0, 5)),
+            sliderInput("cwInput", "Carcass Weight (CW) EPD:", 
+                        min = 0, max = 1000, value = c(0, 1000)),
             actionButton("filterButton", "Filter Bulls"),
             htmlOutput("progress")  # Place to show progress messages
         ),
@@ -82,10 +91,10 @@ server <- function(input, output) {
         text <- pdf_text(input$pdfInput$datapath)
         extracted_data <- unlist(strsplit(text, "\n"))
         
-        # Regex to extract EPDs
-        epd_pattern <- "ID: (\\d+), Name: ([A-Za-z\\s]+), Weight: (\\d+), Milk: (\\d+), Quality: (\\d+\\.\\d+)"
-        bulls_data <- data.frame(matrix(NA, ncol=5, nrow=0))
-        colnames(bulls_data) <- c("ID", "Name", "EPD_Weight", "EPD_Milk", "EPD_Quality")
+        # Updated regex pattern to include carcass characteristics
+        epd_pattern <- "ID: (\\d+), Name: ([A-Za-z\\s]+), Weight: (\\d+), Milk: (\\d+), Quality: (\\d+\\.\\d+), REA: (\\d+\\.\\d+), MARB: (\\d+\\.\\d+), FAT: (\\d+\\.\\d+), YLD: (\\d+\\.\\d+), CW: (\\d+)"
+        bulls_data <- data.frame(matrix(NA, ncol=10, nrow=0))
+        colnames(bulls_data) <- c("ID", "Name", "EPD_Weight", "EPD_Milk", "EPD_Quality", "EPD_REA", "EPD_MARB", "EPD_FAT", "EPD_YLD", "EPD_CW")
         
         for (line in extracted_data) {
             if (grepl(epd_pattern, line)) {
@@ -96,6 +105,11 @@ server <- function(input, output) {
                                                EPD_Weight = as.numeric(match[[1]][4]),
                                                EPD_Milk = as.numeric(match[[1]][5]),
                                                EPD_Quality = as.numeric(match[[1]][6]),
+                                               EPD_REA = as.numeric(match[[1]][7]),
+                                               EPD_MARB = as.numeric(match[[1]][8]),
+                                               EPD_FAT = as.numeric(match[[1]][9]),
+                                               EPD_YLD = as.numeric(match[[1]][10]),
+                                               EPD_CW = as.numeric(match[[1]][11]),
                                                stringsAsFactors = FALSE))
             }
         }
@@ -118,7 +132,27 @@ server <- function(input, output) {
                     sliderInput("qualityInput", "Quality EPD:", 
                                 min = min(bulls()$EPD_Quality), 
                                 max = max(bulls()$EPD_Quality), 
-                                value = c(min(bulls()$EPD_Quality), max(bulls()$EPD_Quality)))
+                                value = c(min(bulls()$EPD_Quality), max(bulls()$EPD_Quality))),
+                    sliderInput("reaInput", "Ribeye Area (REA) EPD:", 
+                                min = min(bulls()$EPD_REA), 
+                                max = max(bulls()$EPD_REA), 
+                                value = c(min(bulls()$EPD_REA), max(bulls()$EPD_REA))),
+                    sliderInput("marbInput", "Marbling Score (MARB) EPD:", 
+                                min = min(bulls()$EPD_MARB), 
+                                max = max(bulls()$EPD_MARB), 
+                                value = c(min(bulls()$EPD_MARB), max(bulls()$EPD_MARB))),
+                    sliderInput("fatInput", "Fat Thickness (FAT) EPD:", 
+                                min = min(bulls()$EPD_FAT), 
+                                max = max(bulls()$EPD_FAT), 
+                                value = c(min(bulls()$EPD_FAT), max(bulls()$EPD_FAT))),
+                    sliderInput("yieldInput", "Yield Grade (YLD) EPD:", 
+                                min = min(bulls()$EPD_YLD), 
+                                max = max(bulls()$EPD_YLD), 
+                                value = c(min(bulls()$EPD_YLD), max(bulls()$EPD_YLD))),
+                    sliderInput("cwInput", "Carcass Weight (CW) EPD:", 
+                                min = min(bulls()$EPD_CW), 
+                                max = max(bulls()$EPD_CW), 
+                                value = c(min(bulls()$EPD_CW), max(bulls()$EPD_CW)))
                 )
             }
         })
@@ -138,7 +172,17 @@ server <- function(input, output) {
                    EPD_Milk >= input$milkInput[1],
                    EPD_Milk <= input$milkInput[2],
                    EPD_Quality >= input$qualityInput[1],
-                   EPD_Quality <= input$qualityInput[2])
+                   EPD_Quality <= input$qualityInput[2],
+                   EPD_REA >= input$reaInput[1],
+                   EPD_REA <= input$reaInput[2],
+                   EPD_MARB >= input$marbInput[1],
+                   EPD_MARB <= input$marbInput[2],
+                   EPD_FAT >= input$fatInput[1],
+                   EPD_FAT <= input$fatInput[2],
+                   EPD_YLD >= input$yieldInput[1],
+                   EPD_YLD <= input$yieldInput[2],
+                   EPD_CW >= input$cwInput[1],
+                   EPD_CW <= input$cwInput[2])
         
         # Update the reactive value with filtered data
         filteredBulls(filtered_data)
