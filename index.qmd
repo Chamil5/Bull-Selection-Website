@@ -8,59 +8,6 @@ title: "Bull Selection Website"
 library(shiny)
 library(dplyr)
 
-# Load your bulls data
-bulls <- read.csv("bulls.csv")
-
-# Define UI for application
-ui <- fluidPage(
-  
-  titlePanel("Bull EPD Selection"),
-  
-  sidebarLayout(
-    sidebarPanel(
-      sliderInput("weightInput", "Weight EPD:", 
-                  min = min(bulls$EPD_Weight), 
-                  max = max(bulls$EPD_Weight), 
-                  value = c(min(bulls$EPD_Weight), max(bulls$EPD_Weight))),
-      sliderInput("milkInput", "Milk EPD:", 
-                  min = min(bulls$EPD_Milk), 
-                  max = max(bulls$EPD_Milk), 
-                  value = c(min(bulls$EPD_Milk), max(bulls$EPD_Milk))),
-      sliderInput("qualityInput", "Quality EPD:", 
-                  min = min(bulls$EPD_Quality), 
-                  max = max(bulls$EPD_Quality), 
-                  value = c(min(bulls$EPD_Quality), max(bulls$EPD_Quality))),
-      actionButton("filterButton", "Filter Bulls")
-    ),
-    
-    mainPanel(
-      tableOutput("bullTable")
-    )
-  )
-)
-
-# Define server logic
-server <- function(input, output) {
-  filteredBulls <- reactiveVal(bulls)
-
-  observeEvent(input$filterButton, {
-    filteredBulls(bulls %>%
-      filter(EPD_Weight >= input$weightInput[1],
-             EPD_Weight <= input$weightInput[2],
-             EPD_Milk >= input$milkInput[1],
-             EPD_Milk <= input$milkInput[2],
-             EPD_Quality >= input$qualityInput[1],
-             EPD_Quality <= input$qualityInput[2]))
-  })
-  
-  output$bullTable <- renderTable({
-    filteredBulls()
-  })
-}
-
-
-# Run the application 
-shinyApp(ui = ui, server = server)
 ```
 
 
