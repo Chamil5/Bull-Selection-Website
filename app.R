@@ -1,8 +1,7 @@
 library(shiny)
 library(shinyjs)
 library(dplyr)
-
-
+library(tesseract)
 
 # Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
@@ -15,7 +14,9 @@ ui <- fluidPage(
     
     sidebarLayout(
         sidebarPanel(
-            textInput("pdfURL", "Enter PDF URL:", value = ""),
+            fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
+                      accept = c("application/pdf"), 
+                      multiple = FALSE),
             actionButton("extractButton", "Extract EPDs"),
             htmlOutput("progress"),
             hr(),
@@ -43,41 +44,28 @@ server <- function(input, output) {
     bulls <- reactiveVal(data.frame())
     
     observeEvent(input$extractButton, {
-        req(input$pdfURL)
+        req(input$pdfInput)
         
-        # Download the PDF from the URL
-        output$progress <- renderText("Downloading PDF, please wait...")
+        output$progress <- renderText("Converting PDF to Text, please wait...")
         shinyjs::disable("extractButton")  # Disable button during processing
         
-        temp_pdf <- tempfile(fileext = ".pdf")
-        response <- GET(input$pdfURL, write_disk(temp_pdf, overwrite = TRUE))
+        # Generate a temporary text file path
+        temp_txt_file <- tempfile(fileext = ".txt")
         
-        if (http_error(response)) {
-            output$progress <- renderText("Error downloading PDF. Please check the URL.")
-            shinyjs::enable("extractButton")  # Re-enable button after error
-            return()
-        }
+        # Attempt to convert PDF to images using pdftocairo
+        # This will convert each page of the PDF to an image
+        img_dir <- tempdir()  # Create a temp directory for images
+        pdf_file <- input$pdfInput$datapath
         
-        # Create temporary directory for images
-        img_dir <- tempdir()
-        
-        # Convert PDF to images using pdftocairo
-        command <- sprintf("pdftocairo -png '%s' '%s/page'", temp_pdf, img_dir)
+        command <- sprintf("pdftocairo -png '%s' '%s/page'", pdf_file, img_dir)
         system(command, ignore.stdout = TRUE, ignore.stderr = TRUE)
         
-        # Use Tesseract to read the images with preprocessing
+        # Use Tesseract to read the images
         image_files <- list.files(img_dir, pattern = "\\.png$", full.names = TRUE)
         
         full_text <- ""
         for (image_file in image_files) {
-            # Load the image
-            img <- image_read(image_file)
-            
-            # Preprocess the image (optional: adjust quality, thresholding, etc.)
-            img <- image_flatten(image_background(img, "white"))
-            
-            # Perform OCR
-            text <- tesseract::ocr(img)
+            text <- tesseract::ocr(image_file)
             full_text <- paste(full_text, text, sep = " ")
         }
         
