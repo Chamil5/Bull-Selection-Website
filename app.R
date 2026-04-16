@@ -1,5 +1,4 @@
 library(shiny)
-library(dplyr)
 library(pdftools)
 library(shinyjs)
 
@@ -46,7 +45,7 @@ server <- function(input, output) {
                 stop("PDF file is empty or could not be read.")
             }
             
-            # Data frame to store extracted EPDs
+            # Initialize data frame to store extracted EPDs
             bulls_data <- data.frame(ID = integer(),
                                      Name = character(),
                                      Weight = numeric(),
@@ -63,25 +62,39 @@ server <- function(input, output) {
             for (page_text in pdf_text_content) {
                 lines <- strsplit(page_text, "\n")[[1]]  # Split page text into lines
                 
+                # Debug: Check content of the first few lines
+                print(head(lines))
+                
                 for (line in lines) {
-                    # Use a regex pattern to capture EPD details
-                    epd_pattern <- "ID: (\\d+), Name: ([A-Za-z\\s]+), Weight: (\\d+), Milk: (\\d+), Quality: (\\d+\\.?\\d*), REA: (\\d+\\.?\\d*), MARB: (\\d+\\.?\\d*), FAT: (\\d+\\.?\\d*), YLD: (\\d+\\.?\\d*), CW: (\\d+)"
-                    if (grepl(epd_pattern, line)) {
-                        match <- regexec(epd_pattern, line)
-                        groups <- regmatches(line, match)
-                        if (length(groups[[1]]) > 0) {
-                            bulls_data <- rbind(bulls_data,
-                                                data.frame(ID = as.integer(groups[[1]][2]),
-                                                           Name = as.character(groups[[1]][3]),
-                                                           Weight = as.numeric(groups[[1]][4]),
-                                                           Milk = as.numeric(groups[[1]][5]),
-                                                           Quality = as.numeric(groups[[1]][6]),
-                                                           REA = as.numeric(groups[[1]][7]),
-                                                           MARB = as.numeric(groups[[1]][8]),
-                                                           FAT = as.numeric(groups[[1]][9]),
-                                                           YLD = as.numeric(groups[[1]][10]),
-                                                           CW = as.numeric(groups[[1]][11]),
-                                                           stringsAsFactors = FALSE))
+                    # Check if this line looks like it contains EPD information
+                    if (grepl("ID:|Name:|Weight:|Milk:|Quality:|REA:|MARB:|FAT:|YLD:|CW:", line)) {
+                        # Attempt to extract values using string manipulation
+                        id <- as.integer(sub(".*ID:\\s*(\\d+).*", "\\1", line))
+                        name <- sub(".*Name:\\s*([^,]*).*", "\\1", line)
+                        weight <- as.numeric(sub(".*Weight:\\s*(\\d+).*", "\\1", line))
+                        milk <- as.numeric(sub(".*Milk:\\s*(\\d+).*", "\\1", line))
+                        quality <- as.numeric(sub(".*Quality:\\s*(\\d+).*", "\\1", line))
+                        rea <- as.numeric(sub(".*REA:\\s*(\\d+).*", "\\1", line))
+                        marb <- as.numeric(sub(".*MARB:\\s*(\\d+).*", "\\1", line))
+                        fat <- as.numeric(sub(".*FAT:\\s*(\\d+).*", "\\1", line))
+                        yld <- as.numeric(sub(".*YLD:\\s*(\\d+).*", "\\1", line))
+                        cw <- as.numeric(sub(".*CW:\\s*(\\d+).*", "\\1", line))
+                        
+                        # Add to data frame if ID is not NA
+                        if (!is.na(id)) {
+                            bulls_data <- rbind(bulls_data, data.frame(
+                                ID = id,
+                                Name = name,
+                                Weight = weight,
+                                Milk = milk,
+                                Quality = quality,
+                                REA = rea,
+                                MARB = marb,
+                                FAT = fat,
+                                YLD = yld,
+                                CW = cw,
+                                stringsAsFactors = FALSE
+                            ))
                         }
                     }
                 }
