@@ -54,7 +54,11 @@ server <- function(input, output) {
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             full_text <- paste(pdf_text_content, collapse = " ")  # Combine all pages' text
             
-            # Improved regex to capture EPD fields
+            # Debug: Print the extracted text to console for inspection
+            # Uncomment the next line for debugging
+            # cat(full_text)
+            
+            # Improved regex pattern to capture EPD fields more flexibly
             pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
             
             matches <- gregexpr(pattern, full_text, perl = TRUE)
@@ -79,7 +83,7 @@ server <- function(input, output) {
                     values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
                     
                     # Ensure we have valid data
-                    if (length(values) >= 10) {
+                    if (length(values) >= 9) {  # Ensure we capture ID and at least 8 traits
                         name_match <- sub("ID:\\s*\\d+\\s*Name:\\s*", "", bull)
                         bulls_data <- rbind(bulls_data, data.frame(
                             ID = as.integer(values[1]),
