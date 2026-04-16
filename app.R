@@ -34,7 +34,8 @@ ui <- fluidPage(
         ),
         
         mainPanel(
-            tableOutput("bullTable")
+            tableOutput("bullTable"),
+            verbatimTextOutput("rawTextOutput")  # Debug information for raw PDF text
         )
     )
 )
@@ -54,8 +55,13 @@ server <- function(input, output) {
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             full_text <- paste(pdf_text_content, collapse = " ")  # Combine all pages' text
             
-            # Enhanced regex pattern to capture relevant EPD fields
-            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]+)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
+            # Debug: Show raw text for inspection
+            output$rawTextOutput <- renderPrint({
+                cat(full_text)  # Show the full text extracted
+            })
+            
+            # Regex pattern adjusted for flexibility
+            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
             
             matches <- gregexpr(pattern, full_text, perl = TRUE)
             found_bulls <- regmatches(full_text, matches)
@@ -78,10 +84,12 @@ server <- function(input, output) {
                 if (nchar(bull) > 0) {
                     values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
                     
+                    # Check if we have 10 expected numeric values
                     if (length(values) >= 10) {
+                        name_match <- sub("ID:\\s*\\d+\\s*Name:\\s*", "", bull)
                         bulls_data <- rbind(bulls_data, data.frame(
                             ID = as.integer(values[1]),
-                            Name = trimws(sub(".*Name:\\s*", "", bull)),
+                            Name = trimws(name_match),
                             Weight = as.numeric(values[2]),
                             Milk = as.numeric(values[3]),
                             Quality = as.numeric(values[4]),
