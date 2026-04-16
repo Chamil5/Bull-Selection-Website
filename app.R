@@ -3,7 +3,7 @@ library(shiny)
 library(dplyr)
 library(pdftools)
 library(shinyjs)
-library(rmarkdown)
+  
 
 # Set maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
@@ -37,12 +37,6 @@ ui <- fluidPage(
             td {
                 background-color: #fff8dc; /* Cornsilk body */
             }
-            .info-box {
-                background-color: #fffacd;
-                border-left: 4px solid #8b5a2b;
-                padding: 10px;
-                margin: 10px 0;
-            }
         "))
     ),
     
@@ -53,36 +47,21 @@ ui <- fluidPage(
             class = "sidebar",
             fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
                       accept = c("application/pdf"),
-                      multiple = FALSE),
+                      multiple = FALSE),  # Change for multiple files if needed
             actionButton("extractButton", "Extract EPDs"),
-            br(), br(),
-            
-            # Filter criteria section
-            h4("Filter Criteria"),
             uiOutput("slides"),
-            actionButton("filterButton", "Filter Bulls", class = "btn btn-primary"),
-            br(), br(),
-            
-            # Generate report section
-            h4("Generate Report"),
-            textInput("reportTitle", "Report Title", 
-                      value = "Bull Selection Report"),
-            downloadButton("downloadReport", "Download Report as PDF", 
-                           class = "btn btn-success"),
-            br(), br(),
-            
-            htmlOutput("progress")
+            sliderInput("weightInput", "Weight EPD:", 
+                        min = 0, max = 100, value = c(0, 100)),
+            sliderInput("milkInput", "Milk EPD:", 
+                        min = 0, max = 100, value = c(0, 100)),
+            sliderInput("qualityInput", "Quality EPD:", 
+                        min = 0, max = 10, value = c(0, 10)),
+            actionButton("filterButton", "Filter Bulls"),
+            htmlOutput("progress")  # Place to show progress messages
         ),
         
         mainPanel(
-            tabsetPanel(
-                tabPanel("Filtered Bulls",
-                         tableOutput("bullTable")
-                ),
-                tabPanel("Summary Statistics",
-                         verbatimTextOutput("summaryStats")
-                )
-            )
+            tableOutput("bullTable")
         )
     )
 )
@@ -145,16 +124,13 @@ server <- function(input, output) {
         })
         
         # Clear progress message
-        output$progress <- renderText(paste("EPDs extracted successfully! Total bulls found:",
-                                            nrow(bulls_data)))
+        output$progress <- renderText("EPDs extracted successfully!")
         shinyjs::enable("extractButton")  # Re-enable button
     })
     
     filteredBulls <- reactiveVal(data.frame())
     
     observeEvent(input$filterButton, {
-        req(nrow(bulls()) > 0)  # Ensure bulls data exists
-        
         # Filter bulls based on the selected EPD criteria
         filtered_data <- bulls() %>%
             filter(EPD_Weight >= input$weightInput[1],
@@ -171,60 +147,14 @@ server <- function(input, output) {
         if (nrow(filtered_data) == 0) {
             output$progress <- renderText("No bulls match the selected criteria.")
         } else {
-            output$progress <- renderText(paste("Bulls filtered successfully! Found:",
-                                                nrow(filtered_data), "bulls"))
+            output$progress <- renderText("Bulls filtered successfully!")
         }
     })
     
     output$bullTable <- renderTable({
         filteredBulls()
     })
-    
-    # Summary statistics
-    output$summaryStats <- renderPrint({
-        if (nrow(filteredBulls()) > 0) {
-            cat("Summary Statistics for Filtered Bulls\n")
-            cat("=====================================\n\n")
-            
-            cat("Weight EPD:\n")
-            print(summary(filteredBulls()$EPD_Weight))
-            cat("\nMilk EPD:\n")
-            print(summary(filteredBulls()$EPD_Milk))
-            cat("\nQuality EPD:\n")
-            print(summary(filteredBulls()$EPD_Quality))
-            
-            cat("\n\nTotal bulls selected:", nrow(filteredBulls()), "\n")
-        } else {
-            cat("No bulls selected. Please apply filters first.\n")
-        }
-    })
-    
-    # Download report
-    output$downloadReport <- downloadHandler(
-        filename = function() {
-            paste0(gsub(" ", "_", input$reportTitle), "_", 
-                   format(Sys.Date(), "%Y%m%d"), ".pdf")
-        },
-        content = function(file) {
-            # Create temporary R Markdown file
-            rmd_file <- tempfile(fileext = ".Rmd")
-            
-            # Write R Markdown content
-            rmd_content <- paste0("
----
-title: '", input$reportTitle, "'
-date: '", format(Sys.Date(), '%B %d, %Y'), "'
-output: pdf_document
----
+}
 
-# Bull Selection Report
-
-## Report Details
-- **Generated**: ", format(Sys.Date(), '%B %d, %Y'), "
-- **Total Bulls Selected**: ", nrow(filteredBulls()), "
-
-## Selected Bulls
-
-```{r, echo=FALSE}
-library(knitr)
-kable(filteredBulls(), caption = 'Selected Bulls Based on EPD Criteria')
+# Run the application 
+shinyApp(ui = ui, server = server)
