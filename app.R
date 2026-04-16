@@ -50,21 +50,21 @@ server <- function(input, output) {
         shinyjs::disable("extractButton")  # Disable button during processing
         
         tryCatch({
-            # Read entire PDF content from all pages
+            # Step 1: Read entire PDF content from all pages
             pdf_text_content <- pdf_text(input$pdfInput$datapath)
             full_text <- paste(pdf_text_content, collapse = " ")  # Combine all pages' text
             
             # Debug: Print the extracted text to console for inspection
-            # Uncomment the next line for debugging
+            # Uncomment to debug
             # cat(full_text)
             
-            # Improved regex pattern to capture EPD fields more flexibly
+            # Step 2: Define regex pattern to capture EPD fields
             pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]*)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
             
             matches <- gregexpr(pattern, full_text, perl = TRUE)
             found_bulls <- regmatches(full_text, matches)
             
-            # Create an empty data frame for the bull data
+            # Step 3: Create an empty data frame for the bull data
             bulls_data <- data.frame(ID = integer(),
                                      Name = character(),
                                      Weight = numeric(),
@@ -77,7 +77,7 @@ server <- function(input, output) {
                                      CW = numeric(),
                                      stringsAsFactors = FALSE)
             
-            # Populate the data frame with extracted data
+            # Step 4: Populate the data frame with extracted data
             for (bull in found_bulls[[1]]) {
                 if (nchar(bull) > 0) {
                     values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
@@ -102,7 +102,7 @@ server <- function(input, output) {
                 }
             }
             
-            # Store extracted data
+            # Step 5: Store extracted data
             bulls(bulls_data)
             output$progress <- renderText(ifelse(nrow(bulls_data) == 0, "No EPDs found in the provided PDF.", "EPDs extracted successfully!"))
             
