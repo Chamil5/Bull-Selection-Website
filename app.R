@@ -6,7 +6,7 @@ library(dplyr)
 # Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 
-# Define the UI for the application
+# Define UI for the application
 ui <- fluidPage(
     useShinyjs(),
     
@@ -114,25 +114,28 @@ server <- function(input, output) {
     output$bullTable <- renderTable({
         req(bulls())
         
+        # Get the current bulls data
         filtered_bulls <- bulls()
         
-        # Check for selected traits and apply filters dynamically
-        if (length(input$selectedTraits) > 0) {
+        # Check for selected traits
+        if (!is.null(input$selectedTraits) && length(input$selectedTraits) > 0) {
             for (trait in input$selectedTraits) {
-                range_input <- switch(trait,
-                                      "Weight" = input$weightRange,
-                                      "Milk" = input$milkRange,
-                                      "Quality" = input$qualityRange,
-                                      "REA" = input$reaRange,
-                                      "MARB" = input$marbRange,
-                                      "FAT" = input$fatRange,
-                                      "YLD" = input$yldRange,
-                                      "CW" = input$cwRange)
-                
-                if (!is.null(range_input)) {
-                    filtered_bulls <- filtered_bulls %>%
-                        filter(get(trait) >= range_input[1], 
-                               get(trait) <= range_input[2])
+                if (trait %in% names(filtered_bulls)) {
+                    range_input <- switch(trait,
+                                          "Weight" = input$weightRange,
+                                          "Milk" = input$milkRange,
+                                          "Quality" = input$qualityRange,
+                                          "REA" = input$reaRange,
+                                          "MARB" = input$marbRange,
+                                          "FAT" = input$fatRange,
+                                          "YLD" = input$yldRange,
+                                          "CW" = input$cwRange)
+                    
+                    # Check if the range inputs are valid
+                    if (!is.null(range_input)) {
+                        filtered_bulls <- filtered_bulls %>%
+                            filter(get(trait) >= range_input[1] & get(trait) <= range_input[2])
+                    }
                 }
             }
         }
