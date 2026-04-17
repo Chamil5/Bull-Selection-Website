@@ -507,8 +507,8 @@ server <- function(input, output) {
             return(data.frame(Message = "No bulls found matching these criteria."))
         }
         
-        # Start with ID and Name
-        cols_to_select <- c("ID", "Name")
+        # Start with Lot, ID and Name
+        cols_to_select <- c("Lot", "ID", "Name")
         
         # Add selected traits in order
         trait_order <- c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW", 
@@ -523,7 +523,7 @@ server <- function(input, output) {
         # Format the output
         displayed_bulls %>%
             select(all_of(cols_to_select)) %>%
-            arrange(ID)
+            arrange(Lot, ID)
         
     }, striped = TRUE, hover = TRUE, bordered = TRUE)
     
@@ -592,6 +592,7 @@ server <- function(input, output) {
 # Flexible extraction function - tries multiple patterns
 extract_bulls_flexible <- function(text) {
     bulls_df <- data.frame(
+        Lot = character(),
         ID = character(),
         Name = character(),
         Weight = numeric(),
@@ -617,6 +618,7 @@ extract_bulls_flexible <- function(text) {
     patterns <- list(
         # Pattern for "EPD: value" format
         "EPD format" = list(
+            lot = "(?:Lot|LOT)\\s*[:#]?\\s*(\\S+)",
             id = "(?:ID|Lot|#)\\s*[:#]?\\s*(\\S+)",
             name = "(?:Name|Bull)\\s*[:#]?\\s*([A-Za-z0-9\\s-]+?)(?=Weight|WEIGHT|EPD)",
             weight = "Weight\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
@@ -645,6 +647,7 @@ extract_bulls_flexible <- function(text) {
         if (nchar(section) > 20) {
             tryCatch({
                 # Extract each field
+                lot <- extract_value(section, "(?:Lot|LOT)\\s*[:#]?\\s*(\\S+)")
                 id <- extract_value(section, "(?:ID|Lot|#)\\s*[:#]?\\s*(\\S+)")
                 name <- extract_value(section, "(?:Name|Bull)\\s*[:#]?\\s*([A-Za-z0-9\\s-]+?)(?=Weight|WEIGHT|EPD|Sire)")
                 weight <- extract_numeric_value(section, "Weight")
@@ -668,6 +671,7 @@ extract_bulls_flexible <- function(text) {
                 if (!is.na(id) && !is.na(name) && length(c(weight, milk, quality, rea, marb, fat, yld, cw, doc, conc, maint, fdam, mrate, pelvic, height, hybrid)) > 0) {
                     if (sum(!is.na(c(weight, milk, quality, rea, marb, fat, yld, cw, doc, conc, maint, fdam, mrate, pelvic, height, hybrid))) >= 3) {
                         bulls_df <- rbind(bulls_df, data.frame(
+                            Lot = as.character(if(is.na(lot)) "" else lot),
                             ID = as.character(id),
                             Name = as.character(name),
                             Weight = as.numeric(weight),
@@ -702,6 +706,7 @@ extract_bulls_flexible <- function(text) {
 # Alternative extraction method - line by line
 extract_bulls_by_lines <- function(text) {
     bulls_df <- data.frame(
+        Lot = character(),
         ID = character(),
         Name = character(),
         Weight = numeric(),
@@ -738,26 +743,27 @@ extract_bulls_by_lines <- function(text) {
                 numbers <- numbers[!is.na(numbers)]
                 
                 if (length(numbers) >= 8) {
-                    # Assume first number is ID, rest are EPDs
+                    # Assume first number is Lot, second is ID, rest are EPDs
                     bulls_df <- rbind(bulls_df, data.frame(
-                        ID = as.character(numbers[1]),
-                        Name = paste("Bull", numbers[1]),
-                        Weight = numbers[2],
-                        Milk = numbers[3],
-                        Quality = numbers[4],
-                        REA = numbers[5],
-                        MARB = numbers[6],
-                        FAT = numbers[7],
-                        YLD = numbers[8],
-                        CW = if(length(numbers) > 8) numbers[9] else NA,
-                        DOC = if(length(numbers) > 9) numbers[10] else NA,
-                        CONC = if(length(numbers) > 10) numbers[11] else NA,
-                        MAINT = if(length(numbers) > 11) numbers[12] else NA,
-                        FDAM = if(length(numbers) > 12) numbers[13] else NA,
-                        MRATE = if(length(numbers) > 13) numbers[14] else NA,
-                        PELVIC = if(length(numbers) > 14) numbers[15] else NA,
-                        HEIGHT = if(length(numbers) > 15) numbers[16] else NA,
-                        HYBRID = if(length(numbers) > 16) numbers[17] else NA,
+                        Lot = as.character(numbers[1]),
+                        ID = as.character(numbers[2]),
+                        Name = paste("Bull", numbers[2]),
+                        Weight = numbers[3],
+                        Milk = numbers[4],
+                        Quality = numbers[5],
+                        REA = numbers[6],
+                        MARB = numbers[7],
+                        FAT = numbers[8],
+                        YLD = numbers[9],
+                        CW = if(length(numbers) > 9) numbers[10] else NA,
+                        DOC = if(length(numbers) > 10) numbers[11] else NA,
+                        CONC = if(length(numbers) > 11) numbers[12] else NA,
+                        MAINT = if(length(numbers) > 12) numbers[13] else NA,
+                        FDAM = if(length(numbers) > 13) numbers[14] else NA,
+                        MRATE = if(length(numbers) > 14) numbers[15] else NA,
+                        PELVIC = if(length(numbers) > 15) numbers[16] else NA,
+                        HEIGHT = if(length(numbers) > 16) numbers[17] else NA,
+                        HYBRID = if(length(numbers) > 17) numbers[18] else NA,
                         stringsAsFactors = FALSE
                     ))
                 }
