@@ -22,7 +22,7 @@ BREED_AVERAGES <- list(
 ui <- fluidPage(
     useShinyjs(),
     
-    titlePanel("Bull EPD Selection (Compared to Breed Averages)"),
+    titlePanel("Bull EPD Selection"),
     
     sidebarLayout(
         sidebarPanel(
@@ -32,39 +32,53 @@ ui <- fluidPage(
             actionButton("extractButton", "Extract EPDs"),
             htmlOutput("progress"),
             hr(),
-            h4("Breed Averages"),
+            h4("Minimum EPD Values (Desired)"),
             fluidRow(
-                column(6, numericInput("breedWeight", "Weight", value = 0)),
-                column(6, numericInput("breedMilk", "Milk", value = 0))
+                column(6, numericInput("minWeight", "Weight", value = 0)),
+                column(6, numericInput("minMilk", "Milk", value = 0))
             ),
             fluidRow(
-                column(6, numericInput("breedQuality", "Quality", value = 0)),
-                column(6, numericInput("breedREA", "REA", value = 0))
+                column(6, numericInput("minQuality", "Quality", value = 0)),
+                column(6, numericInput("minREA", "REA", value = 0))
             ),
             fluidRow(
-                column(6, numericInput("breedMARB", "MARB", value = 0)),
-                column(6, numericInput("breedFAT", "FAT", value = 0))
+                column(6, numericInput("minMARB", "MARB", value = 0)),
+                column(6, numericInput("minFAT", "FAT", value = 0))
             ),
             fluidRow(
-                column(6, numericInput("breedYLD", "YLD", value = 0)),
-                column(6, numericInput("breedCW", "CW", value = 0))
+                column(6, numericInput("minYLD", "YLD", value = 0)),
+                column(6, numericInput("minCW", "CW", value = 0))
             ),
             hr(),
-            h4("Filter by Difference from Breed Average"),
-            checkboxGroupInput("selectedTraits", "Select EPD Traits to Filter By", 
-                               choices = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW")),
-            sliderInput("weightDiff", "Weight (difference from avg)", -500, 500, c(-500, 500)),
-            sliderInput("milkDiff", "Milk (difference from avg)", -50, 50, c(-50, 50)),
-            sliderInput("qualityDiff", "Quality (difference from avg)", -50, 50, c(-50, 50)),
-            sliderInput("reaDiff", "REA (difference from avg)", -50, 50, c(-50, 50)),
-            sliderInput("marbDiff", "MARB (difference from avg)", -50, 50, c(-50, 50)),
-            sliderInput("fatDiff", "FAT (difference from avg)", -10, 10, c(-10, 10)),
-            sliderInput("yldDiff", "YLD (difference from avg)", -50, 50, c(-50, 50)),
-            sliderInput("cwDiff", "CW (difference from avg)", -500, 500, c(-500, 500))
+            h4("Maximum EPD Values (Optional)"),
+            fluidRow(
+                column(6, numericInput("maxWeight", "Weight", value = NA)),
+                column(6, numericInput("maxMilk", "Milk", value = NA))
+            ),
+            fluidRow(
+                column(6, numericInput("maxQuality", "Quality", value = NA)),
+                column(6, numericInput("maxREA", "REA", value = NA))
+            ),
+            fluidRow(
+                column(6, numericInput("maxMARB", "MARB", value = NA)),
+                column(6, numericInput("maxFAT", "FAT", value = NA))
+            ),
+            fluidRow(
+                column(6, numericInput("maxYLD", "YLD", value = NA)),
+                column(6, numericInput("maxCW", "CW", value = NA))
+            ),
+            hr(),
+            actionButton("filterButton", "Apply Filters", class = "btn-primary btn-lg"),
+            width = 3
         ),
         
         mainPanel(
-            tableOutput("bullTable")
+            h3("Filtered Bulls"),
+            tableOutput("bullTable"),
+            hr(),
+            h4("Summary Statistics"),
+            tableOutput("summaryTable"),
+            width = 9
         )
     )
 )
@@ -72,6 +86,7 @@ ui <- fluidPage(
 # Define server logic
 server <- function(input, output) {
     bulls <- reactiveVal(data.frame())
+    filtered_bulls <- reactiveVal(data.frame())
     
     observeEvent(input$extractButton, {
         req(input$pdfInput)
@@ -94,22 +109,7 @@ server <- function(input, output) {
             full_text <- gsub("\r", " ", full_text)
             full_text <- gsub("\t", " ", full_text)
             
-            # Create an empty data frame to collect bull data
-            bulls_data <- data.frame(
-                ID = character(),
-                Name = character(),
-                Weight = numeric(),
-                Milk = numeric(),
-                Quality = numeric(),
-                REA = numeric(),
-                MARB = numeric(),
-                FAT = numeric(),
-                YLD = numeric(),
-                CW = numeric(),
-                stringsAsFactors = FALSE
-            )
-            
-            # Try multiple extraction patterns
+            # Extract bull data
             bulls_data <- extract_bulls_flexible(full_text)
             
             # If no bulls found, try additional parsing methods
@@ -119,6 +119,7 @@ server <- function(input, output) {
             
             # Store extracted data
             bulls(bulls_data)
+            filtered_bulls(bulls_data)  # Initialize filtered data with all bulls
             
             message_text <- if (nrow(bulls_data) == 0) {
                 "No EPDs found in the provided PDF. Please check the PDF format and ensure it contains bull data."
@@ -135,68 +136,163 @@ server <- function(input, output) {
         })
     })
     
-    output$bullTable <- renderTable({
+    # Apply filters when button is clicked
+    observeEvent(input$filterButton, {
         req(bulls())
         
-        # Get the current bulls data
-        filtered_bulls <- bulls()
+        bulls_to_filter <- bulls()
         
-        # Collect breed averages
-        breed_avg <- data.frame(
-            Weight = input$breedWeight,
-            Milk = input$breedMilk,
-            Quality = input$breedQuality,
-            REA = input$breedREA,
-            MARB = input$breedMARB,
-            FAT = input$breedFAT,
-            YLD = input$breedYLD,
-            CW = input$breedCW,
-            stringsAsFactors = FALSE
-        )
-        
-        # Apply filtering based on selected traits (comparing to breed average)
-        if (!is.null(input$selectedTraits) && length(input$selectedTraits) > 0) {
-            for (trait in input$selectedTraits) {
-                if (trait %in% names(filtered_bulls)) {
-                    range_input <- switch(trait,
-                                          "Weight" = input$weightDiff,
-                                          "Milk" = input$milkDiff,
-                                          "Quality" = input$qualityDiff,
-                                          "REA" = input$reaDiff,
-                                          "MARB" = input$marbDiff,
-                                          "FAT" = input$fatDiff,
-                                          "YLD" = input$yldDiff,
-                                          "CW" = input$cwDiff)
-                    
-                    if (!is.null(range_input)) {
-                        breed_avg_value <- breed_avg[[trait]][1]
-                        
-                        filtered_bulls <- filtered_bulls %>%
-                            filter((get(trait) - breed_avg_value) >= range_input[1] & 
-                                       (get(trait) - breed_avg_value) <= range_input[2])
-                    }
-                }
-            }
+        # Apply minimum filters
+        if (!is.na(input$minWeight)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(Weight >= input$minWeight | is.na(Weight))
         }
         
-        # Add columns showing difference from breed average
-        if (nrow(filtered_bulls) > 0) {
-            filtered_bulls$Weight_Diff <- filtered_bulls$Weight - input$breedWeight
-            filtered_bulls$Milk_Diff <- filtered_bulls$Milk - input$breedMilk
-            filtered_bulls$Quality_Diff <- filtered_bulls$Quality - input$breedQuality
-            filtered_bulls$REA_Diff <- filtered_bulls$REA - input$breedREA
-            filtered_bulls$MARB_Diff <- filtered_bulls$MARB - input$breedMARB
-            filtered_bulls$FAT_Diff <- filtered_bulls$FAT - input$breedFAT
-            filtered_bulls$YLD_Diff <- filtered_bulls$YLD - input$breedYLD
-            filtered_bulls$CW_Diff <- filtered_bulls$CW - input$breedCW
+        if (!is.na(input$minMilk)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(Milk >= input$minMilk | is.na(Milk))
         }
         
-        # Display a message if no bulls are found matching the criteria
-        if (nrow(filtered_bulls) == 0) {
+        if (!is.na(input$minQuality)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(Quality >= input$minQuality | is.na(Quality))
+        }
+        
+        if (!is.na(input$minREA)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(REA >= input$minREA | is.na(REA))
+        }
+        
+        if (!is.na(input$minMARB)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(MARB >= input$minMARB | is.na(MARB))
+        }
+        
+        if (!is.na(input$minFAT)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(FAT >= input$minFAT | is.na(FAT))
+        }
+        
+        if (!is.na(input$minYLD)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(YLD >= input$minYLD | is.na(YLD))
+        }
+        
+        if (!is.na(input$minCW)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(CW >= input$minCW | is.na(CW))
+        }
+        
+        # Apply maximum filters
+        if (!is.na(input$maxWeight)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(Weight <= input$maxWeight | is.na(Weight))
+        }
+        
+        if (!is.na(input$maxMilk)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(Milk <= input$maxMilk | is.na(Milk))
+        }
+        
+        if (!is.na(input$maxQuality)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(Quality <= input$maxQuality | is.na(Quality))
+        }
+        
+        if (!is.na(input$maxREA)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(REA <= input$maxREA | is.na(REA))
+        }
+        
+        if (!is.na(input$maxMARB)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(MARB <= input$maxMARB | is.na(MARB))
+        }
+        
+        if (!is.na(input$maxFAT)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(FAT <= input$maxFAT | is.na(FAT))
+        }
+        
+        if (!is.na(input$maxYLD)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(YLD <= input$maxYLD | is.na(YLD))
+        }
+        
+        if (!is.na(input$maxCW)) {
+            bulls_to_filter <- bulls_to_filter %>%
+                filter(CW <= input$maxCW | is.na(CW))
+        }
+        
+        filtered_bulls(bulls_to_filter)
+    })
+    
+    output$bullTable <- renderTable({
+        req(filtered_bulls())
+        
+        displayed_bulls <- filtered_bulls()
+        
+        if (nrow(displayed_bulls) == 0) {
             return(data.frame(Message = "No bulls found matching these criteria."))
         }
         
-        filtered_bulls
+        # Format the output
+        displayed_bulls %>%
+            select(ID, Name, Weight, Milk, Quality, REA, MARB, FAT, YLD, CW) %>%
+            arrange(ID)
+        
+    }, striped = TRUE, hover = TRUE, bordered = TRUE)
+    
+    output$summaryTable <- renderTable({
+        req(filtered_bulls())
+        
+        bulls_data <- filtered_bulls()
+        
+        if (nrow(bulls_data) == 0) {
+            return(data.frame(Trait = character(), Mean = numeric(), Min = numeric(), Max = numeric()))
+        }
+        
+        summary_stats <- data.frame(
+            Trait = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW"),
+            Mean = c(
+                mean(bulls_data$Weight, na.rm = TRUE),
+                mean(bulls_data$Milk, na.rm = TRUE),
+                mean(bulls_data$Quality, na.rm = TRUE),
+                mean(bulls_data$REA, na.rm = TRUE),
+                mean(bulls_data$MARB, na.rm = TRUE),
+                mean(bulls_data$FAT, na.rm = TRUE),
+                mean(bulls_data$YLD, na.rm = TRUE),
+                mean(bulls_data$CW, na.rm = TRUE)
+            ),
+            Min = c(
+                min(bulls_data$Weight, na.rm = TRUE),
+                min(bulls_data$Milk, na.rm = TRUE),
+                min(bulls_data$Quality, na.rm = TRUE),
+                min(bulls_data$REA, na.rm = TRUE),
+                min(bulls_data$MARB, na.rm = TRUE),
+                min(bulls_data$FAT, na.rm = TRUE),
+                min(bulls_data$YLD, na.rm = TRUE),
+                min(bulls_data$CW, na.rm = TRUE)
+            ),
+            Max = c(
+                max(bulls_data$Weight, na.rm = TRUE),
+                max(bulls_data$Milk, na.rm = TRUE),
+                max(bulls_data$Quality, na.rm = TRUE),
+                max(bulls_data$REA, na.rm = TRUE),
+                max(bulls_data$MARB, na.rm = TRUE),
+                max(bulls_data$FAT, na.rm = TRUE),
+                max(bulls_data$YLD, na.rm = TRUE),
+                max(bulls_data$CW, na.rm = TRUE)
+            ),
+            stringsAsFactors = FALSE
+        )
+        
+        # Format to 2 decimal places
+        summary_stats[] <- lapply(summary_stats, function(x) {
+            if (is.numeric(x)) round(x, 2) else x
+        })
+        
+        summary_stats
     }, striped = TRUE, hover = TRUE, bordered = TRUE)
 }
 
