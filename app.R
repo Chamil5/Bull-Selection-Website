@@ -5,7 +5,7 @@ library(pdftools)
 library(stringr)
 library(DT)
 
-# OSU Color Palette a
+# OSU Color Palette
 osu_orange <- "#FF6600"
 osu_black <- "#003366"
 osu_light_orange <- "#FFB84D"
@@ -13,24 +13,26 @@ osu_light_gray <- "#F5F5F5"
 
 # ==================== UI ====================
 ui <- dashboardPage(
+    skin = "black",
+    
     # Custom CSS for OSU branding
     tags$head(
         tags$style(HTML("
       /* OSU Custom Branding */
       .main-header {
-        background: linear-gradient(135deg, #003366 0%, #FF6600 100%);
+        background: linear-gradient(135deg, #003366 0%, #FF6600 100%) !important;
         box-shadow: 0 2px 4px rgba(0,51,102,0.3);
       }
       
       .main-header .logo {
-        background: #003366;
-        color: #FF6600;
+        background: #003366 !important;
+        color: #FF6600 !important;
         font-weight: bold;
         letter-spacing: 1px;
       }
       
       .main-header .navbar {
-        background: #003366;
+        background: #003366 !important;
       }
       
       .sidebar {
@@ -52,23 +54,23 @@ ui <- dashboardPage(
       }
       
       .btn-primary {
-        background-color: #FF6600;
-        border-color: #FF6600;
+        background-color: #FF6600 !important;
+        border-color: #FF6600 !important;
       }
       
       .btn-primary:hover {
-        background-color: #E55A00;
-        border-color: #E55A00;
+        background-color: #E55A00 !important;
+        border-color: #E55A00 !important;
       }
       
       .btn-success {
-        background-color: #FF6600;
-        border-color: #FF6600;
+        background-color: #FF6600 !important;
+        border-color: #FF6600 !important;
       }
       
       .btn-success:hover {
-        background-color: #E55A00;
-        border-color: #E55A00;
+        background-color: #E55A00 !important;
+        border-color: #E55A00 !important;
       }
       
       /* OSU Header Styling */
@@ -77,8 +79,8 @@ ui <- dashboardPage(
         color: white;
         padding: 20px;
         text-align: center;
-        margin-bottom: 20px;
-        border-radius: 5px;
+        margin: -15px -15px 20px -15px;
+        border-radius: 5px 5px 0 0;
         box-shadow: 0 4px 6px rgba(0,0,0,0.2);
       }
       
@@ -110,11 +112,12 @@ ui <- dashboardPage(
       
       /* Trait Selection Box */
       .trait-box {
-        background: #F5F5F5;
+        background: white;
         border-left: 4px solid #FF6600;
         padding: 10px;
         margin: 8px 0;
         border-radius: 3px;
+        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
       }
       
       /* Data Table Styling */
@@ -127,54 +130,14 @@ ui <- dashboardPage(
         color: white;
       }
       
-      /* Stats Cards */
-      .stat-card {
-        background: white;
-        border: 2px solid #FF6600;
-        border-radius: 5px;
-        padding: 15px;
-        margin: 10px 0;
-        text-align: center;
-      }
-      
-      .stat-card h3 {
-        color: #003366;
-        margin: 0 0 10px 0;
-        font-size: 16px;
-      }
-      
-      .stat-card .stat-value {
-        color: #FF6600;
-        font-size: 24px;
-        font-weight: bold;
-      }
-      
-      /* Info Box Custom */
+      /* Info Box */
       .info-box {
         box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border-top: 4px solid #FF6600;
       }
       
       .info-box-icon {
-        background: #FF6600;
-      }
-      
-      /* Footer */
-      .osu-footer {
-        background: #003366;
-        color: white;
-        text-align: center;
-        padding: 15px;
-        margin-top: 20px;
-        font-size: 12px;
-      }
-      
-      .osu-footer a {
-        color: #FFB84D;
-        text-decoration: none;
-      }
-      
-      .osu-footer a:hover {
-        text-decoration: underline;
+        background: #FF6600 !important;
       }
       
       /* Checkbox Styling */
@@ -198,29 +161,72 @@ ui <- dashboardPage(
         max-height: 200px;
         overflow-y: auto;
       }
+      
+      /* Extract Button */
+      .extract-btn {
+        background-color: #FF6600 !important;
+        border: none !important;
+        color: white !important;
+        font-weight: bold !important;
+        padding: 12px 20px !important;
+        width: 100% !important;
+        margin-top: 10px !important;
+      }
+      
+      .extract-btn:hover {
+        background-color: #E55A00 !important;
+      }
+      
+      /* Custom Footer */
+      .osu-footer {
+        background: #003366;
+        color: white;
+        text-align: center;
+        padding: 20px;
+        margin-top: 30px;
+        font-size: 12px;
+        border-top: 4px solid #FF6600;
+      }
+      
+      .osu-footer a {
+        color: #FFB84D;
+        text-decoration: none;
+      }
+      
+      .osu-footer a:hover {
+        text-decoration: underline;
+      }
+      
+      /* Tab styling */
+      .nav-tabs > li.active > a {
+        border-bottom: 3px solid #FF6600 !important;
+        color: #FF6600 !important;
+        font-weight: bold;
+      }
+      
+      .nav-tabs > li > a {
+        color: #003366;
+      }
     "))
     ),
     
     # Dashboard Header
     dashboardHeader(
         title = "OSU EPD Extractor",
-        titleWidth = 300,
-        tags$li(class = "dropdown",
-                tags$a(href = "https://www.okstate.edu", 
-                       target = "_blank",
-                       tags$img(height = "30px", 
-                                alt = "OSU Logo",
-                                src = "https://brand.okstate.edu/sites/default/files/inline-images/osu-logo-horizontal-color-rgb.png"),
-                       style = "padding: 10px;"))
+        titleWidth = 300
     ),
     
     # Sidebar
     dashboardSidebar(
         width = 300,
         
-        # OSU Branding
-        div(class = "osu-header",
-            h1("🐂 EPD Extraction Tool"),
+        # OSU Branding Box
+        box(
+            width = 12,
+            status = "primary",
+            solidHeader = FALSE,
+            class = "osu-header",
+            h1("🐂 EPD Extraction"),
             p("Oklahoma State University")
         ),
         
@@ -279,7 +285,7 @@ ui <- dashboardPage(
         div(class = "sidebar-title", "📊 Step 3: Set Filter Ranges"),
         p("(Optional - leave blank for no filter)", style = "font-size: 11px; color: #999;"),
         
-        # Dynamic range inputs (will be created by server)
+        # Dynamic range inputs
         uiOutput("rangeInputs"),
         
         hr(style = "border-color: #FF6600;"),
@@ -287,24 +293,24 @@ ui <- dashboardPage(
         # Action Button
         actionButton("extractButton", 
                      "🚀 Extract EPDs",
-                     class = "btn-block",
-                     style = "background-color: #FF6600; color: white; border: none; font-weight: bold; padding: 12px;"),
+                     class = "extract-btn"),
+        
+        hr(style = "border-color: #FF6600; margin-top: 20px;"),
         
         # Info Box
         box(
             title = "ℹ️ About",
             status = "info",
-            solidHeader = FALSE,
+            solidHeader = TRUE,
             width = 12,
-            p("This tool extracts EPD (Expected Progeny Difference) traits from PDF documents using advanced text extraction and pattern matching.",
+            p("This tool extracts EPD (Expected Progeny Difference) traits from PDF documents using advanced text extraction.",
               style = "font-size: 12px;"),
             p("For more info: ", 
               tags$a("OSU Beef Genetics", 
                      href = "https://www.ansi.okstate.edu/", 
                      target = "_blank",
-                     style = "color: #FF6600;"),
+                     style = "color: #FF6600; font-weight: bold;"),
               style = "font-size: 11px;"),
-            br(),
             p("© 2024 Oklahoma State University", style = "font-size: 10px; color: #999;")
         )
     ),
@@ -341,11 +347,9 @@ ui <- dashboardPage(
                 br(),
                 
                 fluidRow(
-                    column(12,
-                           infoBoxOutput("bullCountBox"),
-                           infoBoxOutput("traitsCountBox"),
-                           infoBoxOutput("successRateBox")
-                    )
+                    column(4, infoBoxOutput("bullCountBox")),
+                    column(4, infoBoxOutput("traitsCountBox")),
+                    column(4, infoBoxOutput("successRateBox"))
                 ),
                 
                 fluidRow(
@@ -396,11 +400,9 @@ ui <- dashboardPage(
                     )
                 )
             )
-        )
-    ),
-    
-    # Custom Footer
-    tags$footer(
+        ),
+        
+        # Custom Footer
         div(class = "osu-footer",
             p("Oklahoma State University EPD Extraction Tool",
               br(),
@@ -420,7 +422,7 @@ server <- function(input, output, session) {
     rv <- reactiveValues(
         extracted_data = NULL,
         all_traits = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW", 
-                       "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID"),
+                       "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID", "CED"),
         debug_text = ""
     )
     
@@ -444,7 +446,8 @@ server <- function(input, output, session) {
             MRATE = c(-5, 5),
             PELVIC = c(-2, 2),
             HEIGHT = c(-5, 5),
-            HYBRID = c(-10, 10)
+            HYBRID = c(-10, 10),
+            CED = c(-10, 10)
         )
         
         lapply(input$selectedTraits, function(trait) {
@@ -547,10 +550,11 @@ server <- function(input, output, session) {
     })
     
     output$successRateBox <- renderInfoBox({
-        if (is.null(rv$extracted_data)) {
+        if (is.null(rv$extracted_data) || length(input$selectedTraits) == 0) {
             rate <- "N/A"
         } else {
-            na_count <- sum(is.na(rv$extracted_data[[input$selectedTraits[1]]]))
+            first_trait <- input$selectedTraits[1]
+            na_count <- sum(is.na(rv$extracted_data[[first_trait]]))
             rate <- paste0(round((1 - na_count / nrow(rv$extracted_data)) * 100), "%")
         }
         infoBox(
