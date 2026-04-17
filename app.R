@@ -6,18 +6,6 @@ library(pdftools)
 # Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 
-# Define breed averages (you can modify these based on your breed)
-BREED_AVERAGES <- list(
-    Weight = 0,
-    Milk = 0,
-    Quality = 0,
-    REA = 0,
-    MARB = 0,
-    FAT = 0,
-    YLD = 0,
-    CW = 0
-)
-
 # Define UI for the application
 ui <- fluidPage(
     useShinyjs(),
@@ -26,49 +14,45 @@ ui <- fluidPage(
     
     sidebarLayout(
         sidebarPanel(
+            h4("Desired EPD Ranges"),
+            fluidRow(
+                column(6, numericInput("minWeight", "Min Weight", value = -50)),
+                column(6, numericInput("maxWeight", "Max Weight", value = 150))
+            ),
+            fluidRow(
+                column(6, numericInput("minMilk", "Min Milk", value = -10)),
+                column(6, numericInput("maxMilk", "Max Milk", value = 100))
+            ),
+            fluidRow(
+                column(6, numericInput("minQuality", "Min Quality", value = -5)),
+                column(6, numericInput("maxQuality", "Max Quality", value = 5))
+            ),
+            fluidRow(
+                column(6, numericInput("minREA", "Min REA", value = -0.5)),
+                column(6, numericInput("maxREA", "Max REA", value = 2))
+            ),
+            fluidRow(
+                column(6, numericInput("minMARB", "Min MARB", value = -1)),
+                column(6, numericInput("maxMARB", "Max MARB", value = 2))
+            ),
+            fluidRow(
+                column(6, numericInput("minFAT", "Min FAT", value = -0.5)),
+                column(6, numericInput("maxFAT", "Max FAT", value = 1))
+            ),
+            fluidRow(
+                column(6, numericInput("minYLD", "Min YLD", value = -3)),
+                column(6, numericInput("maxYLD", "Max YLD", value = 3))
+            ),
+            fluidRow(
+                column(6, numericInput("minCW", "Min CW", value = -50)),
+                column(6, numericInput("maxCW", "Max CW", value = 150))
+            ),
+            hr(),
             fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
                       accept = c("application/pdf"), 
                       multiple = FALSE),
-            actionButton("extractButton", "Extract EPDs"),
+            actionButton("extractButton", "Extract EPDs", class = "btn-primary btn-lg"),
             htmlOutput("progress"),
-            hr(),
-            h4("Minimum EPD Values (Desired)"),
-            fluidRow(
-                column(6, numericInput("minWeight", "Weight", value = 0)),
-                column(6, numericInput("minMilk", "Milk", value = 0))
-            ),
-            fluidRow(
-                column(6, numericInput("minQuality", "Quality", value = 0)),
-                column(6, numericInput("minREA", "REA", value = 0))
-            ),
-            fluidRow(
-                column(6, numericInput("minMARB", "MARB", value = 0)),
-                column(6, numericInput("minFAT", "FAT", value = 0))
-            ),
-            fluidRow(
-                column(6, numericInput("minYLD", "YLD", value = 0)),
-                column(6, numericInput("minCW", "CW", value = 0))
-            ),
-            hr(),
-            h4("Maximum EPD Values (Optional)"),
-            fluidRow(
-                column(6, numericInput("maxWeight", "Weight", value = NA)),
-                column(6, numericInput("maxMilk", "Milk", value = NA))
-            ),
-            fluidRow(
-                column(6, numericInput("maxQuality", "Quality", value = NA)),
-                column(6, numericInput("maxREA", "REA", value = NA))
-            ),
-            fluidRow(
-                column(6, numericInput("maxMARB", "MARB", value = NA)),
-                column(6, numericInput("maxFAT", "FAT", value = NA))
-            ),
-            fluidRow(
-                column(6, numericInput("maxYLD", "YLD", value = NA)),
-                column(6, numericInput("maxCW", "CW", value = NA))
-            ),
-            hr(),
-            actionButton("filterButton", "Apply Filters", class = "btn-primary btn-lg"),
             width = 3
         ),
         
@@ -85,7 +69,6 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output) {
-    bulls <- reactiveVal(data.frame())
     filtered_bulls <- reactiveVal(data.frame())
     
     observeEvent(input$extractButton, {
@@ -117,17 +100,21 @@ server <- function(input, output) {
                 bulls_data <- extract_bulls_by_lines(full_text)
             }
             
-            # Store extracted data
-            bulls(bulls_data)
-            filtered_bulls(bulls_data)  # Initialize filtered data with all bulls
-            
-            message_text <- if (nrow(bulls_data) == 0) {
-                "No EPDs found in the provided PDF. Please check the PDF format and ensure it contains bull data."
+            # Now filter the extracted bulls based on user inputs
+            if (nrow(bulls_data) > 0) {
+                bulls_filtered <- apply_user_filters(bulls_data, input)
+                filtered_bulls(bulls_filtered)
+                
+                message_text <- if (nrow(bulls_filtered) == 0) {
+                    paste("Extracted", nrow(bulls_data), "bulls total, but 0 match your specified ranges.")
+                } else {
+                    paste("Successfully extracted and filtered", nrow(bulls_filtered), "bulls matching your criteria!")
+                }
+                
+                output$progress <- renderText(message_text)
             } else {
-                paste("Successfully extracted", nrow(bulls_data), "bulls!")
+                output$progress <- renderText("No EPDs found in the provided PDF. Please check the PDF format and ensure it contains bull data.")
             }
-            
-            output$progress <- renderText(message_text)
             
         }, error = function(e) {
             output$progress <- renderText(paste("Error:", conditionMessage(e)))
@@ -136,96 +123,44 @@ server <- function(input, output) {
         })
     })
     
-    # Apply filters when button is clicked
-    observeEvent(input$filterButton, {
-        req(bulls())
+    # Function to apply filters based on user inputs
+    apply_user_filters <- function(bulls_data, input) {
+        result <- bulls_data
         
-        bulls_to_filter <- bulls()
+        # Apply Weight filter
+        result <- result %>%
+            filter((is.na(Weight) | (Weight >= input$minWeight & Weight <= input$maxWeight)))
         
-        # Apply minimum filters
-        if (!is.na(input$minWeight)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(Weight >= input$minWeight | is.na(Weight))
-        }
+        # Apply Milk filter
+        result <- result %>%
+            filter((is.na(Milk) | (Milk >= input$minMilk & Milk <= input$maxMilk)))
         
-        if (!is.na(input$minMilk)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(Milk >= input$minMilk | is.na(Milk))
-        }
+        # Apply Quality filter
+        result <- result %>%
+            filter((is.na(Quality) | (Quality >= input$minQuality & Quality <= input$maxQuality)))
         
-        if (!is.na(input$minQuality)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(Quality >= input$minQuality | is.na(Quality))
-        }
+        # Apply REA filter
+        result <- result %>%
+            filter((is.na(REA) | (REA >= input$minREA & REA <= input$maxREA)))
         
-        if (!is.na(input$minREA)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(REA >= input$minREA | is.na(REA))
-        }
+        # Apply MARB filter
+        result <- result %>%
+            filter((is.na(MARB) | (MARB >= input$minMARB & MARB <= input$maxMARB)))
         
-        if (!is.na(input$minMARB)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(MARB >= input$minMARB | is.na(MARB))
-        }
+        # Apply FAT filter
+        result <- result %>%
+            filter((is.na(FAT) | (FAT >= input$minFAT & FAT <= input$maxFAT)))
         
-        if (!is.na(input$minFAT)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(FAT >= input$minFAT | is.na(FAT))
-        }
+        # Apply YLD filter
+        result <- result %>%
+            filter((is.na(YLD) | (YLD >= input$minYLD & YLD <= input$maxYLD)))
         
-        if (!is.na(input$minYLD)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(YLD >= input$minYLD | is.na(YLD))
-        }
+        # Apply CW filter
+        result <- result %>%
+            filter((is.na(CW) | (CW >= input$minCW & CW <= input$maxCW)))
         
-        if (!is.na(input$minCW)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(CW >= input$minCW | is.na(CW))
-        }
-        
-        # Apply maximum filters
-        if (!is.na(input$maxWeight)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(Weight <= input$maxWeight | is.na(Weight))
-        }
-        
-        if (!is.na(input$maxMilk)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(Milk <= input$maxMilk | is.na(Milk))
-        }
-        
-        if (!is.na(input$maxQuality)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(Quality <= input$maxQuality | is.na(Quality))
-        }
-        
-        if (!is.na(input$maxREA)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(REA <= input$maxREA | is.na(REA))
-        }
-        
-        if (!is.na(input$maxMARB)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(MARB <= input$maxMARB | is.na(MARB))
-        }
-        
-        if (!is.na(input$maxFAT)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(FAT <= input$maxFAT | is.na(FAT))
-        }
-        
-        if (!is.na(input$maxYLD)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(YLD <= input$maxYLD | is.na(YLD))
-        }
-        
-        if (!is.na(input$maxCW)) {
-            bulls_to_filter <- bulls_to_filter %>%
-                filter(CW <= input$maxCW | is.na(CW))
-        }
-        
-        filtered_bulls(bulls_to_filter)
-    })
+        return(result)
+    }
     
     output$bullTable <- renderTable({
         req(filtered_bulls())
