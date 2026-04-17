@@ -239,6 +239,10 @@ ui <- fluidPage(
             fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
                       accept = c("application/pdf"), 
                       multiple = FALSE),
+            
+            textInput("pdfPath", "Or paste PDF file path:", 
+                      placeholder = "/Users/your-name/Downloads/filename.pdf"),
+            
             actionButton("extractButton", "Extract EPDs", class = "btn-primary btn-lg"),
             htmlOutput("progress"),
             hr(),
@@ -354,14 +358,36 @@ server <- function(input, output) {
     filtered_bulls <- reactiveVal(data.frame())
     
     observeEvent(input$extractButton, {
-        req(input$pdfInput)
+        # Check if file is uploaded or path is provided
+        if (is.null(input$pdfInput) && input$pdfPath == "") {
+            output$progress <- renderText("Please upload a PDF or provide a file path.")
+            return()
+        }
         
         output$progress <- renderText("Extracting EPDs from PDF, please wait...")
         shinyjs::disable("extractButton")  # Disable button during processing
         
         tryCatch({
+            # Determine PDF path
+            pdf_path <- if (!is.null(input$pdfInput)) {
+                input$pdfInput$datapath
+            } else {
+                # Clean up the path (remove file:// prefix if present)
+                path <- input$pdfPath
+                if (grepl("^file://", path)) {
+                    path <- gsub("^file://", "", path)
+                }
+                path <- URLdecode(path)
+                path
+            }
+            
+            # Check if file exists
+            if (!file.exists(pdf_path)) {
+                stop("File not found. Please check the file path.")
+            }
+            
             # Extract text from PDF using pdftools
-            pdf_text <- pdf_text(input$pdfInput$datapath)
+            pdf_text <- pdf_text(pdf_path)
             full_text <- paste(pdf_text, collapse = " ")
             
             # Print first 2000 characters for debugging
@@ -374,12 +400,17 @@ server <- function(input, output) {
             full_text <- gsub("\r", " ", full_text)
             full_text <- gsub("\t", " ", full_text)
             
-            # Extract bull data
+            # Extract bull data - try multiple methods
             bulls_data <- extract_bulls_flexible(full_text)
             
             # If no bulls found, try additional parsing methods
             if (nrow(bulls_data) == 0) {
                 bulls_data <- extract_bulls_by_lines(full_text)
+            }
+            
+            # If still no bulls, try the advanced pattern matching
+            if (nrow(bulls_data) == 0) {
+                bulls_data <- extract_bulls_advanced(full_text)
             }
             
             # Store all bulls
@@ -656,28 +687,7 @@ server <- function(input, output) {
 
 # Flexible extraction function - tries multiple patterns
 extract_bulls_flexible <- function(text) {
-    bulls_df <- data.frame(
-        Lot = character(),
-        ID = character(),
-        Name = character(),
-        Weight = numeric(),
-        Milk = numeric(),
-        Quality = numeric(),
-        REA = numeric(),
-        MARB = numeric(),
-        FAT = numeric(),
-        YLD = numeric(),
-        CW = numeric(),
-        DOC = numeric(),
-        CONC = numeric(),
-        MAINT = numeric(),
-        FDAM = numeric(),
-        MRATE = numeric(),
-        PELVIC = numeric(),
-        HEIGHT = numeric(),
-        HYBRID = numeric(),
-        stringsAsFactors = FALSE
-    )
+    bulls_df <- create_empty_bulls_df()
     
     # Pattern 1: Try to find EPD values with labels
     patterns <- list(
@@ -770,28 +780,7 @@ extract_bulls_flexible <- function(text) {
 
 # Alternative extraction method - line by line
 extract_bulls_by_lines <- function(text) {
-    bulls_df <- data.frame(
-        Lot = character(),
-        ID = character(),
-        Name = character(),
-        Weight = numeric(),
-        Milk = numeric(),
-        Quality = numeric(),
-        REA = numeric(),
-        MARB = numeric(),
-        FAT = numeric(),
-        YLD = numeric(),
-        CW = numeric(),
-        DOC = numeric(),
-        CONC = numeric(),
-        MAINT = numeric(),
-        FDAM = numeric(),
-        MRATE = numeric(),
-        PELVIC = numeric(),
-        HEIGHT = numeric(),
-        HYBRID = numeric(),
-        stringsAsFactors = FALSE
-    )
+    bulls_df <- create_empty_bulls_df()
     
     # Split into lines and look for numeric patterns
     lines <- strsplit(text, "\\s{2,}")[[1]]
@@ -841,6 +830,106 @@ extract_bulls_by_lines <- function(text) {
     }
     
     return(bulls_df)
+}
+
+# Advanced extraction method for different PDF formats (NEW)
+extract_bulls_advanced <- function(text) {
+    bulls_df <- create_empty_bulls_df()
+    
+    # Split text into potential bull entries by looking for patterns
+    # This handles PDFs where bull info might be laid out differently
+    
+    # Try to find sections with consistent bull patterns
+    # Split by lot/id numbers followed by names
+    sections <- strsplit(text, "(?=^\\s*\\d{1,4}\\s+[A-Z])", perl = TRUE)[[1]]
+    
+    for (section in sections) {
+        if (nchar(section) > 30) {
+            tryCatch({
+                # Extract lot and ID from beginning
+                lot_id_match <- regmatches(section, regexpr("^\\s*(\\d{1,4})\\s+(\\d+|[A-Z][A-Za-z0-9]*)", section))
+                
+                if (length(lot_id_match) > 0) {
+                    parts <- trimws(unlist(strsplit(lot_id_match[1], "\\s+")))
+                    lot <- parts[1]
+                    id <- if(length(parts) > 1) parts[2] else parts[1]
+                    
+                    # Extract name (usually starts with capital letter after ID)
+                    name_match <- regmatches(section, regexpr("[A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*", section))
+                    name <- if(length(name_match) > 0) name_match[1] else paste("Bull", id)
+                    
+                    # Extract all numbers from the section
+                    all_nums <- as.numeric(unlist(strsplit(gsub("[^0-9.-]", " ", section), "\\s+")))
+                    all_nums <- all_nums[!is.na(all_nums) & !is.infinite(all_nums)]
+                    
+                    # Filter out very large numbers that are probably not EPDs
+                    all_nums <- all_nums[abs(all_nums) < 1000]
+                    
+                    if (length(all_nums) >= 8) {
+                        # Skip the lot/ID numbers if they appear in the number list
+                        # Take the next 8+ numbers as EPD values
+                        epd_values <- head(all_nums, 16)
+                        
+                        bulls_df <- rbind(bulls_df, data.frame(
+                            Lot = as.character(lot),
+                            ID = as.character(id),
+                            Name = as.character(name),
+                            Weight = if(length(epd_values) > 0) epd_values[1] else NA,
+                            Milk = if(length(epd_values) > 1) epd_values[2] else NA,
+                            Quality = if(length(epd_values) > 2) epd_values[3] else NA,
+                            REA = if(length(epd_values) > 3) epd_values[4] else NA,
+                            MARB = if(length(epd_values) > 4) epd_values[5] else NA,
+                            FAT = if(length(epd_values) > 5) epd_values[6] else NA,
+                            YLD = if(length(epd_values) > 6) epd_values[7] else NA,
+                            CW = if(length(epd_values) > 7) epd_values[8] else NA,
+                            DOC = if(length(epd_values) > 8) epd_values[9] else NA,
+                            CONC = if(length(epd_values) > 9) epd_values[10] else NA,
+                            MAINT = if(length(epd_values) > 10) epd_values[11] else NA,
+                            FDAM = if(length(epd_values) > 11) epd_values[12] else NA,
+                            MRATE = if(length(epd_values) > 12) epd_values[13] else NA,
+                            PELVIC = if(length(epd_values) > 13) epd_values[14] else NA,
+                            HEIGHT = if(length(epd_values) > 14) epd_values[15] else NA,
+                            HYBRID = if(length(epd_values) > 15) epd_values[16] else NA,
+                            stringsAsFactors = FALSE
+                        ))
+                    }
+                }
+            }, error = function(e) {
+                # Skip problematic entries silently
+            })
+        }
+    }
+    
+    # Remove duplicates based on ID
+    bulls_df <- bulls_df[!duplicated(bulls_df$ID), ]
+    
+    return(bulls_df)
+}
+
+# Helper function to create empty bulls dataframe (NEW)
+create_empty_bulls_df <- function() {
+    data.frame(
+        Lot = character(),
+        ID = character(),
+        Name = character(),
+        Weight = numeric(),
+        Milk = numeric(),
+        Quality = numeric(),
+        REA = numeric(),
+        MARB = numeric(),
+        FAT = numeric(),
+        YLD = numeric(),
+        CW = numeric(),
+        DOC = numeric(),
+        CONC = numeric(),
+        MAINT = numeric(),
+        FDAM = numeric(),
+        MRATE = numeric(),
+        PELVIC = numeric(),
+        HEIGHT = numeric(),
+        HYBRID = numeric(),
+        stringsAsFactors = FALSE
+    )
 }
 
 # Helper function to extract string values
