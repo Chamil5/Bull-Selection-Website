@@ -3,7 +3,7 @@ library(shinydashboard)
 library(shinyWidgets)
 library(pdftools)
 library(stringr)
-library(DT)
+
 
 # OSU Color Palette
 osu_orange <- "#FF6600"
