@@ -331,7 +331,7 @@ output: pdf_document
 
 ## Report Details
 - **Generated**: ", format(Sys.Date(), '%B %d, %Y'), "
-- **Total Bulls Selected**: ", nrow(filteredBulls()), "
+- **Total Bulls Selected**: ", nrow(filteredBulls()), 
 
 ## Selected Bulls
 
