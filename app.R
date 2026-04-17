@@ -1,6 +1,7 @@
 library(shiny)
 library(shinyjs)
 library(dplyr)
+library(pdftools)
 
 # Set the maximum request size to 200 MB
 options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
@@ -45,82 +46,109 @@ server <- function(input, output) {
     observeEvent(input$extractButton, {
         req(input$pdfInput)
         
-        output$progress <- renderText("Converting PDF to Text, please wait...")
+        output$progress <- renderText("Extracting EPDs from PDF, please wait...")
         shinyjs::disable("extractButton")  # Disable button during processing
         
-        # Generate a temporary text file path
-        temp_txt_file <- tempfile(fileext = ".txt")
-        
-        # Attempt to convert PDF to text using pdftotext
         tryCatch({
-            # Create command line to run pdftotext
-            command <- sprintf("pdftotext '%s' '%s'", input$pdfInput$datapath, temp_txt_file)
-            system(command)
+            # Extract text from PDF using pdftools
+            pdf_text <- pdf_text(input$pdfInput$datapath)
+            full_text <- paste(pdf_text, collapse = " ")
             
-            # Check if the text file exists and has content
-            if (!file.exists(temp_txt_file) || file.info(temp_txt_file)$size == 0) {
-                stop("The PDF contains no readable text after conversion.")
-            }
-            
-            # Read the converted text file
-            full_text <- readLines(temp_txt_file, warn = FALSE)
-            full_text <- paste(full_text, collapse = " ")  # Combine all lines into a single string
-            
-            # Debugging output: Print the full text to console for inspection
-            # cat(full_text)
-            
-            # Regex pattern to extract EPD fields
-            pattern <- "ID:\\s*(\\d+)\\s*Name:\\s*([^\\n]+?)\\s*Weight:\\s*(\\d+)\\s*Milk:\\s*(\\d+)\\s*Quality:\\s*(\\d+)\\s*REA:\\s*(\\d+)\\s*MARB:\\s*(\\d+)\\s*FAT:\\s*(\\d+)\\s*YLD:\\s*(\\d+)\\s*CW:\\s*(\\d+)"
-            
-            matches <- gregexpr(pattern, full_text, perl = TRUE)
-            found_bulls <- regmatches(full_text, matches)
-            found_bulls <- unlist(found_bulls)
+            # Clean up the text
+            full_text <- gsub("\n", " ", full_text)
+            full_text <- gsub("\r", " ", full_text)
             
             # Create an empty data frame to collect bull data
-            bulls_data <- data.frame(ID = integer(),
-                                     Name = character(),
-                                     Weight = numeric(),
-                                     Milk = numeric(),
-                                     Quality = numeric(),
-                                     REA = numeric(),
-                                     MARB = numeric(),
-                                     FAT = numeric(),
-                                     YLD = numeric(),
-                                     CW = numeric(),
-                                     stringsAsFactors = FALSE)
+            bulls_data <- data.frame(
+                ID = character(),
+                Name = character(),
+                Weight = numeric(),
+                Milk = numeric(),
+                Quality = numeric(),
+                REA = numeric(),
+                MARB = numeric(),
+                FAT = numeric(),
+                YLD = numeric(),
+                CW = numeric(),
+                stringsAsFactors = FALSE
+            )
             
-            # Populate the data frame with extracted data
-            for (bull in found_bulls) {
-                if (nchar(bull) > 0) {
-                    values <- unlist(regmatches(bull, gregexpr("\\d+", bull)))
-                    if (length(values) >= 9) {
-                        name_match <- gsub("ID:\\s*\\d+\\s*Name:\\s*|\\s*Weight:.*", "", bull)
-                        bulls_data <- rbind(bulls_data, data.frame(
-                            ID = as.integer(values[1]),
-                            Name = trimws(name_match),
-                            Weight = as.numeric(values[2]),
-                            Milk = as.numeric(values[3]),
-                            Quality = as.numeric(values[4]),
-                            REA = as.numeric(values[5]),
-                            MARB = as.numeric(values[6]),
-                            FAT = as.numeric(values[7]),
-                            YLD = as.numeric(values[8]),
-                            CW = as.numeric(values[9]),
-                            stringsAsFactors = FALSE
-                        ))
-                    }
+            # Pattern to match bull entries - adjust based on your PDF format
+            # This pattern looks for ID followed by various EPD values
+            pattern <- "(?:ID|Lot)\\s*[#:]?\\s*(\\S+).*?(?:Name|Sire)\\s*[#:]?\\s*([^,]+?)\\s+Weight\\s*[#:]?\\s*([-+]?\\d+).*?Milk\\s*[#:]?\\s*([-+]?\\d+).*?Quality\\s*[#:]?\\s*([-+]?\\d+).*?REA\\s*[#:]?\\s*([-+]?\\d+).*?MARB\\s*[#:]?\\s*([-+]?\\d+).*?FAT\\s*[#:]?\\s*([-+]?\\d+).*?YLD\\s*[#:]?\\s*([-+]?\\d+).*?CW\\s*[#:]?\\s*([-+]?\\d+)"
+            
+            matches <- gregexpr(pattern, full_text, perl = TRUE, ignore.case = TRUE)
+            
+            if (length(matches[[1]]) > 0 && matches[[1]][1] > 0) {
+                # Extract matched strings
+                matched_strings <- regmatches(full_text, matches)[[1]]
+                
+                # Use regex to extract individual fields from each match
+                for (match_str in matched_strings) {
+                    tryCatch({
+                        # Extract ID
+                        id_match <- regmatches(match_str, 
+                                               gregexpr("(?:ID|Lot)\\s*[#:]?\\s*(\\S+)", 
+                                                        match_str, perl = TRUE, ignore.case = TRUE))
+                        id <- if (length(id_match[[1]]) > 0) trimws(gsub("(?:ID|Lot)\\s*[#:]?\\s*", "", id_match[[1]][1], ignore.case = TRUE)) else NA
+                        
+                        # Extract Name
+                        name_match <- regmatches(match_str, 
+                                                 gregexpr("(?:Name|Sire)\\s*[#:]?\\s*([^,]+?)\\s+(?=Weight)", 
+                                                          match_str, perl = TRUE, ignore.case = TRUE))
+                        name <- if (length(name_match[[1]]) > 0) trimws(gsub("(?:Name|Sire)\\s*[#:]?\\s*", "", name_match[[1]][1], ignore.case = TRUE)) else NA
+                        
+                        # Extract numeric values
+                        weight <- extract_numeric(match_str, "Weight")
+                        milk <- extract_numeric(match_str, "Milk")
+                        quality <- extract_numeric(match_str, "Quality")
+                        rea <- extract_numeric(match_str, "REA")
+                        marb <- extract_numeric(match_str, "MARB")
+                        fat <- extract_numeric(match_str, "FAT")
+                        yld <- extract_numeric(match_str, "YLD")
+                        cw <- extract_numeric(match_str, "CW")
+                        
+                        # Only add if we have valid data
+                        if (!is.na(id) && !is.na(name) && !is.na(weight)) {
+                            bulls_data <- rbind(bulls_data, data.frame(
+                                ID = id,
+                                Name = name,
+                                Weight = weight,
+                                Milk = milk,
+                                Quality = quality,
+                                REA = rea,
+                                MARB = marb,
+                                FAT = fat,
+                                YLD = yld,
+                                CW = cw,
+                                stringsAsFactors = FALSE
+                            ))
+                        }
+                    }, error = function(e) {
+                        # Skip problematic entries
+                    })
                 }
+            } else {
+                # Alternative pattern if the main pattern fails
+                bulls_data <- extract_bulls_alternative(full_text)
             }
             
             # Store extracted data
             bulls(bulls_data)
-            output$progress <- renderText(ifelse(nrow(bulls_data) == 0, "No EPDs found in the provided PDF.", "EPDs extracted successfully!"))
+            
+            message_text <- if (nrow(bulls_data) == 0) {
+                "No EPDs found in the provided PDF. Please check the PDF format."
+            } else {
+                paste("Successfully extracted", nrow(bulls_data), "bulls!")
+            }
+            
+            output$progress <- renderText(message_text)
             
         }, error = function(e) {
             output$progress <- renderText(paste("Error:", conditionMessage(e)))
+        }, finally = {
+            shinyjs::enable("extractButton")  # Re-enable button after processing
         })
-        
-        shinyjs::enable("extractButton")  # Re-enable button after processing
     })
     
     output$bullTable <- renderTable({
@@ -158,6 +186,49 @@ server <- function(input, output) {
         
         filtered_bulls
     })
+}
+
+# Helper function to extract numeric values
+extract_numeric <- function(text, field_name) {
+    pattern <- paste0(field_name, "\\s*[#:]?\\s*([-+]?\\d+)")
+    match <- regmatches(text, gregexpr(pattern, text, perl = TRUE, ignore.case = TRUE))
+    
+    if (length(match[[1]]) > 0) {
+        value_str <- gsub(paste0(field_name, "\\s*[#:]?\\s*"), "", match[[1]][1], ignore.case = TRUE)
+        as.numeric(trimws(value_str))
+    } else {
+        NA
+    }
+}
+
+# Alternative extraction method for different PDF formats
+extract_bulls_alternative <- function(text) {
+    bulls_df <- data.frame(
+        ID = character(),
+        Name = character(),
+        Weight = numeric(),
+        Milk = numeric(),
+        Quality = numeric(),
+        REA = numeric(),
+        MARB = numeric(),
+        FAT = numeric(),
+        YLD = numeric(),
+        CW = numeric(),
+        stringsAsFactors = FALSE
+    )
+    
+    # Try a more flexible pattern
+    lines <- strsplit(text, "\\s{2,}")[[1]]
+    
+    for (i in seq_along(lines)) {
+        line <- lines[i]
+        if (grepl("\\d+", line) && nchar(line) > 10) {
+            # Try to extract data from this line
+            # This is a fallback and may need customization
+        }
+    }
+    
+    return(bulls_df)
 }
 
 # Run the application 
