@@ -14,6 +14,14 @@ ui <- fluidPage(
     
     sidebarLayout(
         sidebarPanel(
+            # PDF Upload at the top
+            fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
+                      accept = c("application/pdf"), 
+                      multiple = FALSE),
+            actionButton("extractButton", "Extract EPDs", class = "btn-primary btn-lg"),
+            htmlOutput("progress"),
+            hr(),
+            
             h4("Desired EPD Ranges"),
             fluidRow(
                 column(6, numericInput("minWeight", "Min Weight", value = -50)),
@@ -47,12 +55,38 @@ ui <- fluidPage(
                 column(6, numericInput("minCW", "Min CW", value = -50)),
                 column(6, numericInput("maxCW", "Max CW", value = 150))
             ),
-            hr(),
-            fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
-                      accept = c("application/pdf"), 
-                      multiple = FALSE),
-            actionButton("extractButton", "Extract EPDs", class = "btn-primary btn-lg"),
-            htmlOutput("progress"),
+            fluidRow(
+                column(6, numericInput("minDoc", "Min DOC", value = -5)),
+                column(6, numericInput("maxDoc", "Max DOC", value = 5))
+            ),
+            fluidRow(
+                column(6, numericInput("minConc", "Min CONC", value = -2)),
+                column(6, numericInput("maxConc", "Max CONC", value = 2))
+            ),
+            fluidRow(
+                column(6, numericInput("minMaint", "Min MAINT", value = -10)),
+                column(6, numericInput("maxMaint", "Max MAINT", value = 10))
+            ),
+            fluidRow(
+                column(6, numericInput("minFdam", "Min FDAM", value = -5)),
+                column(6, numericInput("maxFdam", "Max FDAM", value = 5))
+            ),
+            fluidRow(
+                column(6, numericInput("minMrate", "Min MRATE", value = -2)),
+                column(6, numericInput("maxMrate", "Max MRATE", value = 2))
+            ),
+            fluidRow(
+                column(6, numericInput("minPelvic", "Min PELVIC", value = 0)),
+                column(6, numericInput("maxPelvic", "Max PELVIC", value = 5))
+            ),
+            fluidRow(
+                column(6, numericInput("minHeight", "Min HEIGHT", value = 45)),
+                column(6, numericInput("maxHeight", "Max HEIGHT", value = 55))
+            ),
+            fluidRow(
+                column(6, numericInput("minHybrid", "Min HYBRID", value = -5)),
+                column(6, numericInput("maxHybrid", "Max HYBRID", value = 5))
+            ),
             width = 3
         ),
         
@@ -159,6 +193,38 @@ server <- function(input, output) {
         result <- result %>%
             filter((is.na(CW) | (CW >= input$minCW & CW <= input$maxCW)))
         
+        # Apply DOC filter
+        result <- result %>%
+            filter((is.na(DOC) | (DOC >= input$minDoc & DOC <= input$maxDoc)))
+        
+        # Apply CONC filter
+        result <- result %>%
+            filter((is.na(CONC) | (CONC >= input$minConc & CONC <= input$maxConc)))
+        
+        # Apply MAINT filter
+        result <- result %>%
+            filter((is.na(MAINT) | (MAINT >= input$minMaint & MAINT <= input$maxMaint)))
+        
+        # Apply FDAM filter
+        result <- result %>%
+            filter((is.na(FDAM) | (FDAM >= input$minFdam & FDAM <= input$maxFdam)))
+        
+        # Apply MRATE filter
+        result <- result %>%
+            filter((is.na(MRATE) | (MRATE >= input$minMrate & MRATE <= input$maxMrate)))
+        
+        # Apply PELVIC filter
+        result <- result %>%
+            filter((is.na(PELVIC) | (PELVIC >= input$minPelvic & PELVIC <= input$maxPelvic)))
+        
+        # Apply HEIGHT filter
+        result <- result %>%
+            filter((is.na(HEIGHT) | (HEIGHT >= input$minHeight & HEIGHT <= input$maxHeight)))
+        
+        # Apply HYBRID filter
+        result <- result %>%
+            filter((is.na(HYBRID) | (HYBRID >= input$minHybrid & HYBRID <= input$maxHybrid)))
+        
         return(result)
     }
     
@@ -173,7 +239,7 @@ server <- function(input, output) {
         
         # Format the output
         displayed_bulls %>%
-            select(ID, Name, Weight, Milk, Quality, REA, MARB, FAT, YLD, CW) %>%
+            select(ID, Name, Weight, Milk, Quality, REA, MARB, FAT, YLD, CW, DOC, CONC, MAINT, FDAM, MRATE, PELVIC, HEIGHT, HYBRID) %>%
             arrange(ID)
         
     }, striped = TRUE, hover = TRUE, bordered = TRUE)
@@ -188,7 +254,7 @@ server <- function(input, output) {
         }
         
         summary_stats <- data.frame(
-            Trait = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW"),
+            Trait = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW", "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID"),
             Mean = c(
                 mean(bulls_data$Weight, na.rm = TRUE),
                 mean(bulls_data$Milk, na.rm = TRUE),
@@ -197,7 +263,15 @@ server <- function(input, output) {
                 mean(bulls_data$MARB, na.rm = TRUE),
                 mean(bulls_data$FAT, na.rm = TRUE),
                 mean(bulls_data$YLD, na.rm = TRUE),
-                mean(bulls_data$CW, na.rm = TRUE)
+                mean(bulls_data$CW, na.rm = TRUE),
+                mean(bulls_data$DOC, na.rm = TRUE),
+                mean(bulls_data$CONC, na.rm = TRUE),
+                mean(bulls_data$MAINT, na.rm = TRUE),
+                mean(bulls_data$FDAM, na.rm = TRUE),
+                mean(bulls_data$MRATE, na.rm = TRUE),
+                mean(bulls_data$PELVIC, na.rm = TRUE),
+                mean(bulls_data$HEIGHT, na.rm = TRUE),
+                mean(bulls_data$HYBRID, na.rm = TRUE)
             ),
             Min = c(
                 min(bulls_data$Weight, na.rm = TRUE),
@@ -207,7 +281,15 @@ server <- function(input, output) {
                 min(bulls_data$MARB, na.rm = TRUE),
                 min(bulls_data$FAT, na.rm = TRUE),
                 min(bulls_data$YLD, na.rm = TRUE),
-                min(bulls_data$CW, na.rm = TRUE)
+                min(bulls_data$CW, na.rm = TRUE),
+                min(bulls_data$DOC, na.rm = TRUE),
+                min(bulls_data$CONC, na.rm = TRUE),
+                min(bulls_data$MAINT, na.rm = TRUE),
+                min(bulls_data$FDAM, na.rm = TRUE),
+                min(bulls_data$MRATE, na.rm = TRUE),
+                min(bulls_data$PELVIC, na.rm = TRUE),
+                min(bulls_data$HEIGHT, na.rm = TRUE),
+                min(bulls_data$HYBRID, na.rm = TRUE)
             ),
             Max = c(
                 max(bulls_data$Weight, na.rm = TRUE),
@@ -217,7 +299,15 @@ server <- function(input, output) {
                 max(bulls_data$MARB, na.rm = TRUE),
                 max(bulls_data$FAT, na.rm = TRUE),
                 max(bulls_data$YLD, na.rm = TRUE),
-                max(bulls_data$CW, na.rm = TRUE)
+                max(bulls_data$CW, na.rm = TRUE),
+                max(bulls_data$DOC, na.rm = TRUE),
+                max(bulls_data$CONC, na.rm = TRUE),
+                max(bulls_data$MAINT, na.rm = TRUE),
+                max(bulls_data$FDAM, na.rm = TRUE),
+                max(bulls_data$MRATE, na.rm = TRUE),
+                max(bulls_data$PELVIC, na.rm = TRUE),
+                max(bulls_data$HEIGHT, na.rm = TRUE),
+                max(bulls_data$HYBRID, na.rm = TRUE)
             ),
             stringsAsFactors = FALSE
         )
@@ -244,6 +334,14 @@ extract_bulls_flexible <- function(text) {
         FAT = numeric(),
         YLD = numeric(),
         CW = numeric(),
+        DOC = numeric(),
+        CONC = numeric(),
+        MAINT = numeric(),
+        FDAM = numeric(),
+        MRATE = numeric(),
+        PELVIC = numeric(),
+        HEIGHT = numeric(),
+        HYBRID = numeric(),
         stringsAsFactors = FALSE
     )
     
@@ -260,7 +358,15 @@ extract_bulls_flexible <- function(text) {
             marb = "MARB\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
             fat = "FAT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
             yld = "YLD\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            cw = "CW\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)"
+            cw = "CW\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            doc = "DOC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            conc = "CONC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            maint = "MAINT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            fdam = "FDAM\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            mrate = "MRATE\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            pelvic = "PELVIC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            height = "HEIGHT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
+            hybrid = "HYBRID\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)"
         )
     )
     
@@ -281,10 +387,18 @@ extract_bulls_flexible <- function(text) {
                 fat <- extract_numeric_value(section, "FAT")
                 yld <- extract_numeric_value(section, "YLD")
                 cw <- extract_numeric_value(section, "CW")
+                doc <- extract_numeric_value(section, "DOC")
+                conc <- extract_numeric_value(section, "CONC")
+                maint <- extract_numeric_value(section, "MAINT")
+                fdam <- extract_numeric_value(section, "FDAM")
+                mrate <- extract_numeric_value(section, "MRATE")
+                pelvic <- extract_numeric_value(section, "PELVIC")
+                height <- extract_numeric_value(section, "HEIGHT")
+                hybrid <- extract_numeric_value(section, "HYBRID")
                 
                 # Only add if we have valid data
-                if (!is.na(id) && !is.na(name) && length(c(weight, milk, quality, rea, marb, fat, yld, cw)) > 0) {
-                    if (sum(!is.na(c(weight, milk, quality, rea, marb, fat, yld, cw))) >= 3) {
+                if (!is.na(id) && !is.na(name) && length(c(weight, milk, quality, rea, marb, fat, yld, cw, doc, conc, maint, fdam, mrate, pelvic, height, hybrid)) > 0) {
+                    if (sum(!is.na(c(weight, milk, quality, rea, marb, fat, yld, cw, doc, conc, maint, fdam, mrate, pelvic, height, hybrid))) >= 3) {
                         bulls_df <- rbind(bulls_df, data.frame(
                             ID = as.character(id),
                             Name = as.character(name),
@@ -296,6 +410,14 @@ extract_bulls_flexible <- function(text) {
                             FAT = as.numeric(fat),
                             YLD = as.numeric(yld),
                             CW = as.numeric(cw),
+                            DOC = as.numeric(doc),
+                            CONC = as.numeric(conc),
+                            MAINT = as.numeric(maint),
+                            FDAM = as.numeric(fdam),
+                            MRATE = as.numeric(mrate),
+                            PELVIC = as.numeric(pelvic),
+                            HEIGHT = as.numeric(height),
+                            HYBRID = as.numeric(hybrid),
                             stringsAsFactors = FALSE
                         ))
                     }
@@ -322,6 +444,14 @@ extract_bulls_by_lines <- function(text) {
         FAT = numeric(),
         YLD = numeric(),
         CW = numeric(),
+        DOC = numeric(),
+        CONC = numeric(),
+        MAINT = numeric(),
+        FDAM = numeric(),
+        MRATE = numeric(),
+        PELVIC = numeric(),
+        HEIGHT = numeric(),
+        HYBRID = numeric(),
         stringsAsFactors = FALSE
     )
     
@@ -352,6 +482,14 @@ extract_bulls_by_lines <- function(text) {
                         FAT = numbers[7],
                         YLD = numbers[8],
                         CW = if(length(numbers) > 8) numbers[9] else NA,
+                        DOC = if(length(numbers) > 9) numbers[10] else NA,
+                        CONC = if(length(numbers) > 10) numbers[11] else NA,
+                        MAINT = if(length(numbers) > 11) numbers[12] else NA,
+                        FDAM = if(length(numbers) > 12) numbers[13] else NA,
+                        MRATE = if(length(numbers) > 13) numbers[14] else NA,
+                        PELVIC = if(length(numbers) > 14) numbers[15] else NA,
+                        HEIGHT = if(length(numbers) > 15) numbers[16] else NA,
+                        HYBRID = if(length(numbers) > 16) numbers[17] else NA,
                         stringsAsFactors = FALSE
                     ))
                 }
