@@ -141,7 +141,7 @@ ui <- fluidPage(
             /* Table styling */
             table {
                 background-color: #2d2d2d;
-                color: #fff;
+                color: #000;
                 border: 2px solid #ff8c00;
                 border-radius: 4px;
                 overflow: hidden;
@@ -155,16 +155,20 @@ ui <- fluidPage(
                 letter-spacing: 1px;
             }
             
+            tbody {
+                color: #000;
+            }
+            
             tbody tr:nth-child(odd) {
-                background-color: #1a1a1a;
+                background-color: #e8e8e8;
             }
             
             tbody tr:nth-child(even) {
-                background-color: #2d2d2d;
+                background-color: #f5f5f5;
             }
             
             tbody tr:hover {
-                background-color: #3d3d3d;
+                background-color: #d0d0d0;
                 box-shadow: inset 0 0 10px rgba(255, 140, 0, 0.2);
             }
             
