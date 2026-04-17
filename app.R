@@ -1,586 +1,700 @@
 library(shiny)
-library(shinyjs)
-library(dplyr)
+library(shinydashboard)
+library(shinyWidgets)
 library(pdftools)
+library(stringr)
+library(DT)
 
-# Set the maximum request size to 200 MB
-options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
+# OSU Color Palette
+osu_orange <- "#FF6600"
+osu_black <- "#003366"
+osu_light_orange <- "#FFB84D"
+osu_light_gray <- "#F5F5F5"
 
-# Define UI for the application
-ui <- fluidPage(
-    useShinyjs(),
+# ==================== UI ====================
+ui <- dashboardPage(
+    # Custom CSS for OSU branding
+    tags$head(
+        tags$style(HTML("
+      /* OSU Custom Branding */
+      .main-header {
+        background: linear-gradient(135deg, #003366 0%, #FF6600 100%);
+        box-shadow: 0 2px 4px rgba(0,51,102,0.3);
+      }
+      
+      .main-header .logo {
+        background: #003366;
+        color: #FF6600;
+        font-weight: bold;
+        letter-spacing: 1px;
+      }
+      
+      .main-header .navbar {
+        background: #003366;
+      }
+      
+      .sidebar {
+        background: #F5F5F5;
+        border-right: 4px solid #FF6600;
+      }
+      
+      .content-wrapper {
+        background: #FFFFFF;
+      }
+      
+      .box {
+        border-top: 4px solid #FF6600;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      
+      .box.box-primary {
+        border-top-color: #FF6600;
+      }
+      
+      .btn-primary {
+        background-color: #FF6600;
+        border-color: #FF6600;
+      }
+      
+      .btn-primary:hover {
+        background-color: #E55A00;
+        border-color: #E55A00;
+      }
+      
+      .btn-success {
+        background-color: #FF6600;
+        border-color: #FF6600;
+      }
+      
+      .btn-success:hover {
+        background-color: #E55A00;
+        border-color: #E55A00;
+      }
+      
+      /* OSU Header Styling */
+      .osu-header {
+        background: linear-gradient(135deg, #003366 0%, #1a4d7a 50%, #FF6600 100%);
+        color: white;
+        padding: 20px;
+        text-align: center;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+      }
+      
+      .osu-header h1 {
+        margin: 0;
+        font-size: 28px;
+        font-weight: bold;
+        letter-spacing: 1px;
+      }
+      
+      .osu-header p {
+        margin: 5px 0 0 0;
+        font-size: 14px;
+        opacity: 0.9;
+      }
+      
+      /* Sidebar Title */
+      .sidebar-title {
+        color: #003366;
+        font-weight: bold;
+        font-size: 14px;
+        margin-top: 15px;
+        margin-bottom: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        border-bottom: 2px solid #FF6600;
+        padding-bottom: 8px;
+      }
+      
+      /* Trait Selection Box */
+      .trait-box {
+        background: #F5F5F5;
+        border-left: 4px solid #FF6600;
+        padding: 10px;
+        margin: 8px 0;
+        border-radius: 3px;
+      }
+      
+      /* Data Table Styling */
+      .dataTables_wrapper {
+        font-size: 13px;
+      }
+      
+      .table-header {
+        background: linear-gradient(135deg, #003366 0%, #FF6600 100%);
+        color: white;
+      }
+      
+      /* Stats Cards */
+      .stat-card {
+        background: white;
+        border: 2px solid #FF6600;
+        border-radius: 5px;
+        padding: 15px;
+        margin: 10px 0;
+        text-align: center;
+      }
+      
+      .stat-card h3 {
+        color: #003366;
+        margin: 0 0 10px 0;
+        font-size: 16px;
+      }
+      
+      .stat-card .stat-value {
+        color: #FF6600;
+        font-size: 24px;
+        font-weight: bold;
+      }
+      
+      /* Info Box Custom */
+      .info-box {
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      
+      .info-box-icon {
+        background: #FF6600;
+      }
+      
+      /* Footer */
+      .osu-footer {
+        background: #003366;
+        color: white;
+        text-align: center;
+        padding: 15px;
+        margin-top: 20px;
+        font-size: 12px;
+      }
+      
+      .osu-footer a {
+        color: #FFB84D;
+        text-decoration: none;
+      }
+      
+      .osu-footer a:hover {
+        text-decoration: underline;
+      }
+      
+      /* Checkbox Styling */
+      .checkbox {
+        margin-bottom: 8px;
+      }
+      
+      .checkbox label {
+        font-size: 13px;
+        color: #003366;
+      }
+      
+      /* Console Output */
+      .console-output {
+        background: #1a1a1a;
+        color: #00FF00;
+        font-family: 'Courier New', monospace;
+        padding: 10px;
+        border-radius: 3px;
+        font-size: 12px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+    "))
+    ),
     
-    titlePanel("Bull EPD Selection"),
+    # Dashboard Header
+    dashboardHeader(
+        title = "OSU EPD Extractor",
+        titleWidth = 300,
+        tags$li(class = "dropdown",
+                tags$a(href = "https://www.okstate.edu", 
+                       target = "_blank",
+                       tags$img(height = "30px", 
+                                alt = "OSU Logo",
+                                src = "https://brand.okstate.edu/sites/default/files/inline-images/osu-logo-horizontal-color-rgb.png"),
+                       style = "padding: 10px;"))
+    ),
     
-    sidebarLayout(
-        sidebarPanel(
-            # PDF Upload at the top
-            fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
-                      accept = c("application/pdf"), 
-                      multiple = FALSE),
-            actionButton("extractButton", "Extract EPDs", class = "btn-primary btn-lg"),
-            htmlOutput("progress"),
-            hr(),
-            
-            h4("Select Traits to Extract"),
-            checkboxGroupInput("selectedTraits", "Traits:",
-                               choices = c(
-                                   "Weight" = "Weight",
-                                   "Milk" = "Milk",
-                                   "Quality" = "Quality",
-                                   "REA" = "REA",
-                                   "MARB" = "MARB",
-                                   "FAT" = "FAT",
-                                   "YLD" = "YLD",
-                                   "CW" = "CW",
-                                   "DOC" = "DOC",
-                                   "CONC" = "CONC",
-                                   "MAINT" = "MAINT",
-                                   "FDAM" = "FDAM",
-                                   "MRATE" = "MRATE",
-                                   "PELVIC" = "PELVIC",
-                                   "HEIGHT" = "HEIGHT",
-                                   "HYBRID" = "HYBRID"
-                               ),
-                               selected = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW"),
-                               inline = FALSE),
-            hr(),
-            
-            h4("Desired EPD Ranges"),
-            fluidRow(
-                column(6, numericInput("minWeight", "Min Weight", value = -50)),
-                column(6, numericInput("maxWeight", "Max Weight", value = 150))
-            ),
-            fluidRow(
-                column(6, numericInput("minMilk", "Min Milk", value = -10)),
-                column(6, numericInput("maxMilk", "Max Milk", value = 100))
-            ),
-            fluidRow(
-                column(6, numericInput("minQuality", "Min Quality", value = -5)),
-                column(6, numericInput("maxQuality", "Max Quality", value = 5))
-            ),
-            fluidRow(
-                column(6, numericInput("minREA", "Min REA", value = -0.5)),
-                column(6, numericInput("maxREA", "Max REA", value = 2))
-            ),
-            fluidRow(
-                column(6, numericInput("minMARB", "Min MARB", value = -1)),
-                column(6, numericInput("maxMARB", "Max MARB", value = 2))
-            ),
-            fluidRow(
-                column(6, numericInput("minFAT", "Min FAT", value = -0.5)),
-                column(6, numericInput("maxFAT", "Max FAT", value = 1))
-            ),
-            fluidRow(
-                column(6, numericInput("minYLD", "Min YLD", value = -3)),
-                column(6, numericInput("maxYLD", "Max YLD", value = 3))
-            ),
-            fluidRow(
-                column(6, numericInput("minCW", "Min CW", value = -50)),
-                column(6, numericInput("maxCW", "Max CW", value = 150))
-            ),
-            fluidRow(
-                column(6, numericInput("minDoc", "Min DOC", value = -5)),
-                column(6, numericInput("maxDoc", "Max DOC", value = 5))
-            ),
-            fluidRow(
-                column(6, numericInput("minConc", "Min CONC", value = -2)),
-                column(6, numericInput("maxConc", "Max CONC", value = 2))
-            ),
-            fluidRow(
-                column(6, numericInput("minMaint", "Min MAINT", value = -10)),
-                column(6, numericInput("maxMaint", "Max MAINT", value = 10))
-            ),
-            fluidRow(
-                column(6, numericInput("minFdam", "Min FDAM", value = -5)),
-                column(6, numericInput("maxFdam", "Max FDAM", value = 5))
-            ),
-            fluidRow(
-                column(6, numericInput("minMrate", "Min MRATE", value = -2)),
-                column(6, numericInput("maxMrate", "Max MRATE", value = 2))
-            ),
-            fluidRow(
-                column(6, numericInput("minPelvic", "Min PELVIC", value = 0)),
-                column(6, numericInput("maxPelvic", "Max PELVIC", value = 5))
-            ),
-            fluidRow(
-                column(6, numericInput("minHeight", "Min HEIGHT", value = 45)),
-                column(6, numericInput("maxHeight", "Max HEIGHT", value = 55))
-            ),
-            fluidRow(
-                column(6, numericInput("minHybrid", "Min HYBRID", value = -5)),
-                column(6, numericInput("maxHybrid", "Max HYBRID", value = 5))
-            ),
-            width = 3
+    # Sidebar
+    dashboardSidebar(
+        width = 300,
+        
+        # OSU Branding
+        div(class = "osu-header",
+            h1("🐂 EPD Extraction Tool"),
+            p("Oklahoma State University")
         ),
         
-        mainPanel(
-            h3("Filtered Bulls"),
-            tableOutput("bullTable"),
-            hr(),
-            h4("Summary Statistics"),
-            tableOutput("summaryTable"),
-            width = 9
+        # File Upload
+        div(class = "sidebar-title", "📁 Step 1: Upload PDF"),
+        fileInput("pdfFile", 
+                  "Choose PDF File",
+                  accept = c(".pdf"),
+                  buttonLabel = "Browse...",
+                  placeholder = "Max 200MB"),
+        
+        hr(style = "border-color: #FF6600;"),
+        
+        # Trait Selection
+        div(class = "sidebar-title", "🎯 Step 2: Select Traits"),
+        p("Choose which EPD traits to extract:", style = "font-size: 12px; color: #666;"),
+        
+        checkboxGroupInput(
+            "selectedTraits",
+            label = NULL,
+            choices = list(
+                "Weight Traits" = c(
+                    "Weight (WW)" = "Weight",
+                    "Calving Ease Direct (CED)" = "CED",
+                    "Height" = "HEIGHT"
+                ),
+                "Production Traits" = c(
+                    "Milk" = "Milk",
+                    "Maternal Milk (MM)" = "MAINT",
+                    "Maintenance Energy (ME)" = "MAINT"
+                ),
+                "Carcass Traits" = c(
+                    "Marbling (MARB)" = "MARB",
+                    "Rib Eye Area (REA)" = "REA",
+                    "Fat Thickness" = "FAT",
+                    "Carcass Weight (CW)" = "CW",
+                    "Yield Grade (YLD)" = "YLD"
+                ),
+                "Quality & Other" = c(
+                    "Meat Quality" = "Quality",
+                    "Docility" = "DOC",
+                    "Conception Rate" = "CONC",
+                    "Feed Intake" = "FDAM",
+                    "Maternal Rate" = "MRATE",
+                    "Pelvic Area" = "PELVIC",
+                    "Hybrid Vigor" = "HYBRID"
+                )
+            ),
+            selected = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW"),
+            inline = FALSE
+        ),
+        
+        hr(style = "border-color: #FF6600;"),
+        
+        # Filter Ranges
+        div(class = "sidebar-title", "📊 Step 3: Set Filter Ranges"),
+        p("(Optional - leave blank for no filter)", style = "font-size: 11px; color: #999;"),
+        
+        # Dynamic range inputs (will be created by server)
+        uiOutput("rangeInputs"),
+        
+        hr(style = "border-color: #FF6600;"),
+        
+        # Action Button
+        actionButton("extractButton", 
+                     "🚀 Extract EPDs",
+                     class = "btn-block",
+                     style = "background-color: #FF6600; color: white; border: none; font-weight: bold; padding: 12px;"),
+        
+        # Info Box
+        box(
+            title = "ℹ️ About",
+            status = "info",
+            solidHeader = FALSE,
+            width = 12,
+            p("This tool extracts EPD (Expected Progeny Difference) traits from PDF documents using advanced text extraction and pattern matching.",
+              style = "font-size: 12px;"),
+            p("For more info: ", 
+              tags$a("OSU Beef Genetics", 
+                     href = "https://www.ansi.okstate.edu/", 
+                     target = "_blank",
+                     style = "color: #FF6600;"),
+              style = "font-size: 11px;"),
+            br(),
+            p("© 2024 Oklahoma State University", style = "font-size: 10px; color: #999;")
         )
+    ),
+    
+    # Main Body
+    dashboardBody(
+        # Results Tabs
+        tabsetPanel(
+            # Tab 1: Extracted Data
+            tabPanel(
+                title = "📋 Filtered Bulls",
+                icon = icon("table"),
+                br(),
+                
+                fluidRow(
+                    column(12,
+                           box(
+                               title = "Extracted EPD Data",
+                               status = "primary",
+                               solidHeader = TRUE,
+                               width = 12,
+                               collapsible = TRUE,
+                               collapsed = FALSE,
+                               DTOutput("bullsTable")
+                           )
+                    )
+                )
+            ),
+            
+            # Tab 2: Summary Statistics
+            tabPanel(
+                title = "📈 Summary Statistics",
+                icon = icon("chart-bar"),
+                br(),
+                
+                fluidRow(
+                    column(12,
+                           infoBoxOutput("bullCountBox"),
+                           infoBoxOutput("traitsCountBox"),
+                           infoBoxOutput("successRateBox")
+                    )
+                ),
+                
+                fluidRow(
+                    column(12,
+                           box(
+                               title = "Statistical Summary",
+                               status = "success",
+                               solidHeader = TRUE,
+                               width = 12,
+                               collapsible = TRUE,
+                               collapsed = FALSE,
+                               DTOutput("statsTable")
+                           )
+                    )
+                )
+            ),
+            
+            # Tab 3: Debug Console
+            tabPanel(
+                title = "🔍 Debug Console",
+                icon = icon("bug"),
+                br(),
+                
+                fluidRow(
+                    column(12,
+                           box(
+                               title = "Extraction Debug Output (first 2000 chars)",
+                               status = "warning",
+                               solidHeader = TRUE,
+                               width = 12,
+                               collapsible = TRUE,
+                               collapsed = TRUE,
+                               div(class = "console-output",
+                                   verbatimTextOutput("debugConsole"))
+                           )
+                    )
+                ),
+                
+                fluidRow(
+                    column(12,
+                           box(
+                               title = "Extraction Details",
+                               status = "info",
+                               solidHeader = TRUE,
+                               width = 12,
+                               verbatimTextOutput("extractionDetails")
+                           )
+                    )
+                )
+            )
+        )
+    ),
+    
+    # Custom Footer
+    tags$footer(
+        div(class = "osu-footer",
+            p("Oklahoma State University EPD Extraction Tool",
+              br(),
+              "Department of Animal and Food Sciences",
+              br(),
+              tags$a("Visit OSU", href = "https://www.okstate.edu", target = "_blank"),
+              " | ",
+              tags$a("Contact ANSI", href = "https://www.ansi.okstate.edu/", target = "_blank")
+            ))
     )
 )
 
-# Define server logic
-server <- function(input, output) {
-    filtered_bulls <- reactiveVal(data.frame())
+# ==================== SERVER ====================
+server <- function(input, output, session) {
     
-    observeEvent(input$extractButton, {
-        req(input$pdfInput)
+    # Reactive values
+    rv <- reactiveValues(
+        extracted_data = NULL,
+        all_traits = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW", 
+                       "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID"),
+        debug_text = ""
+    )
+    
+    # Generate range inputs dynamically
+    output$rangeInputs <- renderUI({
+        req(input$selectedTraits)
         
-        output$progress <- renderText("Extracting EPDs from PDF, please wait...")
-        shinyjs::disable("extractButton")  # Disable button during processing
+        ranges <- list(
+            Weight = c(-100, 100),
+            Milk = c(-50, 50),
+            Quality = c(-10, 10),
+            REA = c(-3, 3),
+            MARB = c(-100, 100),
+            FAT = c(-0.5, 0.5),
+            YLD = c(-3, 3),
+            CW = c(-100, 100),
+            DOC = c(-20, 20),
+            CONC = c(-5, 5),
+            MAINT = c(-50, 50),
+            FDAM = c(-10, 10),
+            MRATE = c(-5, 5),
+            PELVIC = c(-2, 2),
+            HEIGHT = c(-5, 5),
+            HYBRID = c(-10, 10)
+        )
         
-        tryCatch({
-            # Extract text from PDF using pdftools
-            pdf_text <- pdf_text(input$pdfInput$datapath)
-            full_text <- paste(pdf_text, collapse = " ")
-            
-            # Print first 2000 characters for debugging
-            cat("\n=== PDF TEXT SAMPLE ===\n")
-            cat(substr(full_text, 1, 2000))
-            cat("\n=== END SAMPLE ===\n")
-            
-            # Clean up the text
-            full_text <- gsub("\n", " ", full_text)
-            full_text <- gsub("\r", " ", full_text)
-            full_text <- gsub("\t", " ", full_text)
-            
-            # Extract bull data
-            bulls_data <- extract_bulls_flexible(full_text)
-            
-            # If no bulls found, try additional parsing methods
-            if (nrow(bulls_data) == 0) {
-                bulls_data <- extract_bulls_by_lines(full_text)
-            }
-            
-            # Now filter the extracted bulls based on user inputs
-            if (nrow(bulls_data) > 0) {
-                bulls_filtered <- apply_user_filters(bulls_data, input)
-                filtered_bulls(bulls_filtered)
-                
-                message_text <- if (nrow(bulls_filtered) == 0) {
-                    paste("Extracted", nrow(bulls_data), "bulls total, but 0 match your specified ranges.")
-                } else {
-                    paste("Successfully extracted and filtered", nrow(bulls_filtered), "bulls matching your criteria!")
-                }
-                
-                output$progress <- renderText(message_text)
-            } else {
-                output$progress <- renderText("No EPDs found in the provided PDF. Please check the PDF format and ensure it contains bull data.")
-            }
-            
-        }, error = function(e) {
-            output$progress <- renderText(paste("Error:", conditionMessage(e)))
-        }, finally = {
-            shinyjs::enable("extractButton")  # Re-enable button after processing
+        lapply(input$selectedTraits, function(trait) {
+            range_vals <- ranges[[trait]]
+            tagList(
+                tags$div(
+                    class = "trait-box",
+                    strong(trait, style = "color: #FF6600;"),
+                    br(),
+                    sliderInput(
+                        inputId = paste0("range_", trait),
+                        label = "Range:",
+                        min = range_vals[1],
+                        max = range_vals[2],
+                        value = range_vals,
+                        step = 0.1,
+                        ticks = FALSE
+                    )
+                )
+            )
         })
     })
     
-    # Function to apply filters based on user inputs
-    apply_user_filters <- function(bulls_data, input) {
-        result <- bulls_data
-        
-        # Apply Weight filter
-        if ("Weight" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(Weight) | (Weight >= input$minWeight & Weight <= input$maxWeight)))
-        }
-        
-        # Apply Milk filter
-        if ("Milk" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(Milk) | (Milk >= input$minMilk & Milk <= input$maxMilk)))
-        }
-        
-        # Apply Quality filter
-        if ("Quality" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(Quality) | (Quality >= input$minQuality & Quality <= input$maxQuality)))
-        }
-        
-        # Apply REA filter
-        if ("REA" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(REA) | (REA >= input$minREA & REA <= input$maxREA)))
-        }
-        
-        # Apply MARB filter
-        if ("MARB" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(MARB) | (MARB >= input$minMARB & MARB <= input$maxMARB)))
-        }
-        
-        # Apply FAT filter
-        if ("FAT" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(FAT) | (FAT >= input$minFAT & FAT <= input$maxFAT)))
-        }
-        
-        # Apply YLD filter
-        if ("YLD" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(YLD) | (YLD >= input$minYLD & YLD <= input$maxYLD)))
-        }
-        
-        # Apply CW filter
-        if ("CW" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(CW) | (CW >= input$minCW & CW <= input$maxCW)))
-        }
-        
-        # Apply DOC filter
-        if ("DOC" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(DOC) | (DOC >= input$minDoc & DOC <= input$maxDoc)))
-        }
-        
-        # Apply CONC filter
-        if ("CONC" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(CONC) | (CONC >= input$minConc & CONC <= input$maxConc)))
-        }
-        
-        # Apply MAINT filter
-        if ("MAINT" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(MAINT) | (MAINT >= input$minMaint & MAINT <= input$maxMaint)))
-        }
-        
-        # Apply FDAM filter
-        if ("FDAM" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(FDAM) | (FDAM >= input$minFdam & FDAM <= input$maxFdam)))
-        }
-        
-        # Apply MRATE filter
-        if ("MRATE" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(MRATE) | (MRATE >= input$minMrate & MRATE <= input$maxMrate)))
-        }
-        
-        # Apply PELVIC filter
-        if ("PELVIC" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(PELVIC) | (PELVIC >= input$minPelvic & PELVIC <= input$maxPelvic)))
-        }
-        
-        # Apply HEIGHT filter
-        if ("HEIGHT" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(HEIGHT) | (HEIGHT >= input$minHeight & HEIGHT <= input$maxHeight)))
-        }
-        
-        # Apply HYBRID filter
-        if ("HYBRID" %in% input$selectedTraits) {
-            result <- result %>%
-                filter((is.na(HYBRID) | (HYBRID >= input$minHybrid & HYBRID <= input$maxHybrid)))
-        }
-        
-        return(result)
-    }
-    
-    output$bullTable <- renderTable({
-        req(filtered_bulls())
-        req(input$selectedTraits)
-        
-        displayed_bulls <- filtered_bulls()
-        
-        if (nrow(displayed_bulls) == 0) {
-            return(data.frame(Message = "No bulls found matching these criteria."))
-        }
-        
-        # Start with ID and Name
-        cols_to_select <- c("ID", "Name")
-        
-        # Add selected traits in order
-        trait_order <- c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW", 
-                         "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID")
-        
-        for (trait in trait_order) {
-            if (trait %in% input$selectedTraits) {
-                cols_to_select <- c(cols_to_select, trait)
-            }
-        }
-        
-        # Format the output
-        displayed_bulls %>%
-            select(all_of(cols_to_select)) %>%
-            arrange(ID)
-        
-    }, striped = TRUE, hover = TRUE, bordered = TRUE)
-    
-    output$summaryTable <- renderTable({
-        req(filtered_bulls())
-        req(input$selectedTraits)
-        
-        bulls_data <- filtered_bulls()
-        
-        if (nrow(bulls_data) == 0) {
-            return(data.frame(Trait = character(), Mean = numeric(), Min = numeric(), Max = numeric()))
-        }
-        
-        # Build summary stats only for selected traits
-        trait_data <- list()
-        trait_names <- c()
-        
-        trait_info <- list(
-            Weight = "Weight",
-            Milk = "Milk",
-            Quality = "Quality",
-            REA = "REA",
-            MARB = "MARB",
-            FAT = "FAT",
-            YLD = "YLD",
-            CW = "CW",
-            DOC = "DOC",
-            CONC = "CONC",
-            MAINT = "MAINT",
-            FDAM = "FDAM",
-            MRATE = "MRATE",
-            PELVIC = "PELVIC",
-            HEIGHT = "HEIGHT",
-            HYBRID = "HYBRID"
-        )
-        
-        for (trait in input$selectedTraits) {
-            if (trait %in% names(bulls_data)) {
-                trait_data[[trait]] <- list(
-                    Mean = mean(bulls_data[[trait]], na.rm = TRUE),
-                    Min = min(bulls_data[[trait]], na.rm = TRUE),
-                    Max = max(bulls_data[[trait]], na.rm = TRUE)
-                )
-                trait_names <- c(trait_names, trait)
-            }
-        }
-        
-        summary_stats <- data.frame(
-            Trait = trait_names,
-            Mean = sapply(trait_names, function(t) trait_data[[t]]$Mean),
-            Min = sapply(trait_names, function(t) trait_data[[t]]$Min),
-            Max = sapply(trait_names, function(t) trait_data[[t]]$Max),
-            stringsAsFactors = FALSE,
-            row.names = NULL
-        )
-        
-        # Format to 2 decimal places
-        summary_stats$Mean <- round(summary_stats$Mean, 2)
-        summary_stats$Min <- round(summary_stats$Min, 2)
-        summary_stats$Max <- round(summary_stats$Max, 2)
-        
-        summary_stats
-    }, striped = TRUE, hover = TRUE, bordered = TRUE)
-}
-
-# Flexible extraction function - tries multiple patterns
-extract_bulls_flexible <- function(text) {
-    bulls_df <- data.frame(
-        ID = character(),
-        Name = character(),
-        Weight = numeric(),
-        Milk = numeric(),
-        Quality = numeric(),
-        REA = numeric(),
-        MARB = numeric(),
-        FAT = numeric(),
-        YLD = numeric(),
-        CW = numeric(),
-        DOC = numeric(),
-        CONC = numeric(),
-        MAINT = numeric(),
-        FDAM = numeric(),
-        MRATE = numeric(),
-        PELVIC = numeric(),
-        HEIGHT = numeric(),
-        HYBRID = numeric(),
-        stringsAsFactors = FALSE
-    )
-    
-    # Pattern 1: Try to find EPD values with labels
-    patterns <- list(
-        # Pattern for "EPD: value" format
-        "EPD format" = list(
-            id = "(?:ID|Lot|#)\\s*[:#]?\\s*(\\S+)",
-            name = "(?:Name|Bull)\\s*[:#]?\\s*([A-Za-z0-9\\s-]+?)(?=Weight|WEIGHT|EPD)",
-            weight = "Weight\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            milk = "Milk\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            quality = "Quality\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            rea = "REA\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            marb = "MARB\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            fat = "FAT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            yld = "YLD\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            cw = "CW\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            doc = "DOC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            conc = "CONC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            maint = "MAINT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            fdam = "FDAM\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            mrate = "MRATE\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            pelvic = "PELVIC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            height = "HEIGHT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            hybrid = "HYBRID\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)"
-        )
-    )
-    
-    # Split by common delimiters that might separate bulls
-    potential_sections <- strsplit(text, "(?:Lot|ID|Bull)\\s*[:#]?\\s*(?=[A-Za-z0-9])", perl = TRUE)[[1]]
-    
-    for (section in potential_sections) {
-        if (nchar(section) > 20) {
-            tryCatch({
-                # Extract each field
-                id <- extract_value(section, "(?:ID|Lot|#)\\s*[:#]?\\s*(\\S+)")
-                name <- extract_value(section, "(?:Name|Bull)\\s*[:#]?\\s*([A-Za-z0-9\\s-]+?)(?=Weight|WEIGHT|EPD|Sire)")
-                weight <- extract_numeric_value(section, "Weight")
-                milk <- extract_numeric_value(section, "Milk")
-                quality <- extract_numeric_value(section, "Quality")
-                rea <- extract_numeric_value(section, "REA")
-                marb <- extract_numeric_value(section, "MARB")
-                fat <- extract_numeric_value(section, "FAT")
-                yld <- extract_numeric_value(section, "YLD")
-                cw <- extract_numeric_value(section, "CW")
-                doc <- extract_numeric_value(section, "DOC")
-                conc <- extract_numeric_value(section, "CONC")
-                maint <- extract_numeric_value(section, "MAINT")
-                fdam <- extract_numeric_value(section, "FDAM")
-                mrate <- extract_numeric_value(section, "MRATE")
-                pelvic <- extract_numeric_value(section, "PELVIC")
-                height <- extract_numeric_value(section, "HEIGHT")
-                hybrid <- extract_numeric_value(section, "HYBRID")
-                
-                # Only add if we have valid data
-                if (!is.na(id) && !is.na(name) && length(c(weight, milk, quality, rea, marb, fat, yld, cw, doc, conc, maint, fdam, mrate, pelvic, height, hybrid)) > 0) {
-                    if (sum(!is.na(c(weight, milk, quality, rea, marb, fat, yld, cw, doc, conc, maint, fdam, mrate, pelvic, height, hybrid))) >= 3) {
-                        bulls_df <- rbind(bulls_df, data.frame(
-                            ID = as.character(id),
-                            Name = as.character(name),
-                            Weight = as.numeric(weight),
-                            Milk = as.numeric(milk),
-                            Quality = as.numeric(quality),
-                            REA = as.numeric(rea),
-                            MARB = as.numeric(marb),
-                            FAT = as.numeric(fat),
-                            YLD = as.numeric(yld),
-                            CW = as.numeric(cw),
-                            DOC = as.numeric(doc),
-                            CONC = as.numeric(conc),
-                            MAINT = as.numeric(maint),
-                            FDAM = as.numeric(fdam),
-                            MRATE = as.numeric(mrate),
-                            PELVIC = as.numeric(pelvic),
-                            HEIGHT = as.numeric(height),
-                            HYBRID = as.numeric(hybrid),
-                            stringsAsFactors = FALSE
-                        ))
-                    }
-                }
-            }, error = function(e) {
-                # Skip problematic entries silently
-            })
-        }
-    }
-    
-    return(bulls_df)
-}
-
-# Alternative extraction method - line by line
-extract_bulls_by_lines <- function(text) {
-    bulls_df <- data.frame(
-        ID = character(),
-        Name = character(),
-        Weight = numeric(),
-        Milk = numeric(),
-        Quality = numeric(),
-        REA = numeric(),
-        MARB = numeric(),
-        FAT = numeric(),
-        YLD = numeric(),
-        CW = numeric(),
-        DOC = numeric(),
-        CONC = numeric(),
-        MAINT = numeric(),
-        FDAM = numeric(),
-        MRATE = numeric(),
-        PELVIC = numeric(),
-        HEIGHT = numeric(),
-        HYBRID = numeric(),
-        stringsAsFactors = FALSE
-    )
-    
-    # Split into lines and look for numeric patterns
-    lines <- strsplit(text, "\\s{2,}")[[1]]
-    
-    i <- 1
-    while (i <= length(lines)) {
-        line <- lines[i]
+    # Extract EPDs
+    observeEvent(input$extractButton, {
+        req(input$pdfFile)
         
         tryCatch({
-            # Look for lines with lots of numbers (likely EPD lines)
-            if (grepl("\\d+", line) && nchar(line) > 30) {
-                # Try to extract numbers
-                numbers <- as.numeric(unlist(strsplit(gsub("[^0-9.-]", " ", line), "\\s+")))
-                numbers <- numbers[!is.na(numbers)]
-                
-                if (length(numbers) >= 8) {
-                    # Assume first number is ID, rest are EPDs
-                    bulls_df <- rbind(bulls_df, data.frame(
-                        ID = as.character(numbers[1]),
-                        Name = paste("Bull", numbers[1]),
-                        Weight = numbers[2],
-                        Milk = numbers[3],
-                        Quality = numbers[4],
-                        REA = numbers[5],
-                        MARB = numbers[6],
-                        FAT = numbers[7],
-                        YLD = numbers[8],
-                        CW = if(length(numbers) > 8) numbers[9] else NA,
-                        DOC = if(length(numbers) > 9) numbers[10] else NA,
-                        CONC = if(length(numbers) > 10) numbers[11] else NA,
-                        MAINT = if(length(numbers) > 11) numbers[12] else NA,
-                        FDAM = if(length(numbers) > 12) numbers[13] else NA,
-                        MRATE = if(length(numbers) > 13) numbers[14] else NA,
-                        PELVIC = if(length(numbers) > 14) numbers[15] else NA,
-                        HEIGHT = if(length(numbers) > 15) numbers[16] else NA,
-                        HYBRID = if(length(numbers) > 16) numbers[17] else NA,
-                        stringsAsFactors = FALSE
-                    ))
+            pdf_path <- input$pdfFile$datapath
+            pdf_text <- pdf_text(pdf_path)
+            full_text <- paste(pdf_text, collapse = "\n")
+            rv$debug_text <- substr(full_text, 1, 2000)
+            
+            # Extract bulls
+            extracted <- extract_bulls_flexible(full_text, rv$all_traits)
+            
+            # Apply user filters
+            filtered <- apply_user_filters(extracted, input$selectedTraits, input)
+            rv$extracted_data <- filtered
+            
+            showNotification(
+                paste0("✅ Successfully extracted ", nrow(filtered), " bulls!"),
+                type = "message",
+                duration = 5
+            )
+        }, error = function(e) {
+            showNotification(
+                paste0("❌ Error: ", e$message),
+                type = "error",
+                duration = 5
+            )
+        })
+    })
+    
+    # Render Bulls Table
+    output$bullsTable <- renderDT({
+        req(rv$extracted_data, input$selectedTraits)
+        
+        data_cols <- c("ID", "Name", input$selectedTraits)
+        display_data <- rv$extracted_data[, data_cols, drop = FALSE]
+        
+        datatable(
+            display_data,
+            options = list(
+                pageLength = 10,
+                dom = 'lftip',
+                columnDefs = list(list(className = 'dt-center', targets = "_all"))
+            ),
+            rownames = FALSE,
+            filter = 'top'
+        ) %>%
+            formatStyle(
+                columns = names(display_data),
+                backgroundColor = '#F9F9F9',
+                borderColor = '#FF6600'
+            )
+    })
+    
+    # Info Boxes
+    output$bullCountBox <- renderInfoBox({
+        count <- if (is.null(rv$extracted_data)) 0 else nrow(rv$extracted_data)
+        infoBox(
+            title = "Bulls Extracted",
+            value = count,
+            icon = icon("cow"),
+            color = "orange",
+            fill = TRUE
+        )
+    })
+    
+    output$traitsCountBox <- renderInfoBox({
+        count <- length(input$selectedTraits)
+        infoBox(
+            title = "Traits Selected",
+            value = count,
+            icon = icon("list-check"),
+            color = "blue",
+            fill = TRUE
+        )
+    })
+    
+    output$successRateBox <- renderInfoBox({
+        if (is.null(rv$extracted_data)) {
+            rate <- "N/A"
+        } else {
+            na_count <- sum(is.na(rv$extracted_data[[input$selectedTraits[1]]]))
+            rate <- paste0(round((1 - na_count / nrow(rv$extracted_data)) * 100), "%")
+        }
+        infoBox(
+            title = "Data Completeness",
+            value = rate,
+            icon = icon("check-circle"),
+            color = "green",
+            fill = TRUE
+        )
+    })
+    
+    # Stats Table
+    output$statsTable <- renderDT({
+        req(rv$extracted_data, input$selectedTraits)
+        
+        stats <- data.frame(
+            Trait = input$selectedTraits,
+            Mean = sapply(input$selectedTraits, function(t) {
+                round(mean(as.numeric(rv$extracted_data[[t]]), na.rm = TRUE), 2)
+            }),
+            Min = sapply(input$selectedTraits, function(t) {
+                round(min(as.numeric(rv$extracted_data[[t]]), na.rm = TRUE), 2)
+            }),
+            Max = sapply(input$selectedTraits, function(t) {
+                round(max(as.numeric(rv$extracted_data[[t]]), na.rm = TRUE), 2)
+            }),
+            StdDev = sapply(input$selectedTraits, function(t) {
+                round(sd(as.numeric(rv$extracted_data[[t]]), na.rm = TRUE), 2)
+            }),
+            NAs = sapply(input$selectedTraits, function(t) {
+                sum(is.na(rv$extracted_data[[t]]))
+            })
+        )
+        
+        datatable(
+            stats,
+            options = list(
+                pageLength = 16,
+                dom = 'lftip'
+            ),
+            rownames = FALSE
+        ) %>%
+            formatStyle(
+                'Trait',
+                backgroundColor = '#FF6600',
+                color = 'white',
+                fontWeight = 'bold'
+            )
+    })
+    
+    # Debug Console
+    output$debugConsole <- renderText({
+        if (nchar(rv$debug_text) > 0) {
+            rv$debug_text
+        } else {
+            "No PDF extracted yet. Upload a PDF and click 'Extract EPDs' to see debug output."
+        }
+    })
+    
+    output$extractionDetails <- renderText({
+        if (is.null(rv$extracted_data)) {
+            "No extraction performed yet."
+        } else {
+            paste0(
+                "Total Bulls Extracted: ", nrow(rv$extracted_data), "\n",
+                "Selected Traits: ", paste(input$selectedTraits, collapse = ", "), "\n",
+                "Data Dimensions: ", nrow(rv$extracted_data), " rows × ", ncol(rv$extracted_data), " columns\n",
+                "Extraction Timestamp: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+            )
+        }
+    })
+}
+
+# ==================== HELPER FUNCTIONS ====================
+
+extract_bulls_flexible <- function(text, all_traits) {
+    # Pattern to find bull ID and Name lines
+    bull_pattern <- "^\\s*([A-Z0-9]+)\\s+([A-Za-z\\s]+?)\\s+(-?\\d+)?\\s*$"
+    
+    # Split text into lines
+    lines <- str_split(text, "\n")[[1]]
+    
+    # Initialize data frame
+    bulls <- data.frame(ID = character(), Name = character(), stringsAsFactors = FALSE)
+    
+    # Add all trait columns
+    for (trait in all_traits) {
+        bulls[[trait]] <- NA_real_
+    }
+    
+    # Extract bulls
+    for (i in seq_along(lines)) {
+        line <- lines[i]
+        
+        if (str_detect(line, bull_pattern)) {
+            matches <- str_match(line, bull_pattern)
+            id <- matches[1, 2]
+            name <- str_trim(matches[1, 3])
+            
+            # Extract traits from nearby lines
+            bull_row <- data.frame(ID = id, Name = name, stringsAsFactors = FALSE)
+            
+            for (trait in all_traits) {
+                bull_row[[trait]] <- NA_real_
+            }
+            
+            # Look for trait values in surrounding lines
+            for (j in max(1, i-5):min(length(lines), i+5)) {
+                for (trait in all_traits) {
+                    pattern <- paste0("\\b", trait, "\\s+(-?\\d+\\.?\\d*)")
+                    if (str_detect(lines[j], pattern)) {
+                        value <- as.numeric(str_extract(lines[j], pattern))
+                        bull_row[[trait]] <- value
+                    }
                 }
             }
-        }, error = function(e) {
-            # Skip
-        })
+            
+            bulls <- rbind(bulls, bull_row)
+        }
+    }
+    
+    return(bulls)
+}
+
+apply_user_filters <- function(data, selected_traits, input) {
+    filtered <- data
+    
+    for (trait in selected_traits) {
+        range_id <- paste0("range_", trait)
         
-        i <- i + 1
+        if (!is.null(input[[range_id]])) {
+            min_val <- input[[range_id]][1]
+            max_val <- input[[range_id]][2]
+            
+            # Filter by range
+            filtered <- filtered[
+                is.na(filtered[[trait]]) | 
+                    (as.numeric(filtered[[trait]]) >= min_val & as.numeric(filtered[[trait]]) <= max_val),
+            ]
+        }
     }
     
-    return(bulls_df)
+    return(filtered)
 }
 
-# Helper function to extract string values
-extract_value <- function(text, pattern) {
-    match <- regmatches(text, regexpr(pattern, text, perl = TRUE, ignore.case = TRUE))
-    if (length(match) > 0 && nchar(match[1]) > 0) {
-        trimws(gsub(pattern, "\\1", match[1], perl = TRUE, ignore.case = TRUE))
-    } else {
-        NA
-    }
-}
-
-# Helper function to extract numeric values
-extract_numeric_value <- function(text, field_name) {
-    pattern <- paste0(field_name, "\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)")
-    match <- regmatches(text, regexpr(pattern, text, perl = TRUE, ignore.case = TRUE))
-    
-    if (length(match) > 0 && nchar(match[1]) > 0) {
-        value_str <- gsub(paste0(field_name, "\\s*[:#]?\\s*"), "", match[1], ignore.case = TRUE)
-        as.numeric(trimws(value_str))
-    } else {
-        NA
-    }
-}
-
-# Run the application 
-shinyApp(ui = ui, server = server)
+# Run the app
+shinyApp(ui, server)
