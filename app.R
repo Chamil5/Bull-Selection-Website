@@ -5,7 +5,7 @@ library(pdftools)
 library(stringr)
 library(DT)
 
-# OSU Color Palette
+# OSU Color Palette a
 osu_orange <- "#FF6600"
 osu_black <- "#003366"
 osu_light_orange <- "#FFB84D"
