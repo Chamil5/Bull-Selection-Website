@@ -22,6 +22,30 @@ ui <- fluidPage(
             htmlOutput("progress"),
             hr(),
             
+            h4("Select Traits to Extract"),
+            checkboxGroupInput("selectedTraits", "Traits:",
+                               choices = c(
+                                   "Weight" = "Weight",
+                                   "Milk" = "Milk",
+                                   "Quality" = "Quality",
+                                   "REA" = "REA",
+                                   "MARB" = "MARB",
+                                   "FAT" = "FAT",
+                                   "YLD" = "YLD",
+                                   "CW" = "CW",
+                                   "DOC" = "DOC",
+                                   "CONC" = "CONC",
+                                   "MAINT" = "MAINT",
+                                   "FDAM" = "FDAM",
+                                   "MRATE" = "MRATE",
+                                   "PELVIC" = "PELVIC",
+                                   "HEIGHT" = "HEIGHT",
+                                   "HYBRID" = "HYBRID"
+                               ),
+                               selected = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW"),
+                               inline = FALSE),
+            hr(),
+            
             h4("Desired EPD Ranges"),
             fluidRow(
                 column(6, numericInput("minWeight", "Min Weight", value = -50)),
@@ -162,74 +186,107 @@ server <- function(input, output) {
         result <- bulls_data
         
         # Apply Weight filter
-        result <- result %>%
-            filter((is.na(Weight) | (Weight >= input$minWeight & Weight <= input$maxWeight)))
+        if ("Weight" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(Weight) | (Weight >= input$minWeight & Weight <= input$maxWeight)))
+        }
         
         # Apply Milk filter
-        result <- result %>%
-            filter((is.na(Milk) | (Milk >= input$minMilk & Milk <= input$maxMilk)))
+        if ("Milk" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(Milk) | (Milk >= input$minMilk & Milk <= input$maxMilk)))
+        }
         
         # Apply Quality filter
-        result <- result %>%
-            filter((is.na(Quality) | (Quality >= input$minQuality & Quality <= input$maxQuality)))
+        if ("Quality" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(Quality) | (Quality >= input$minQuality & Quality <= input$maxQuality)))
+        }
         
         # Apply REA filter
-        result <- result %>%
-            filter((is.na(REA) | (REA >= input$minREA & REA <= input$maxREA)))
+        if ("REA" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(REA) | (REA >= input$minREA & REA <= input$maxREA)))
+        }
         
         # Apply MARB filter
-        result <- result %>%
-            filter((is.na(MARB) | (MARB >= input$minMARB & MARB <= input$maxMARB)))
+        if ("MARB" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(MARB) | (MARB >= input$minMARB & MARB <= input$maxMARB)))
+        }
         
         # Apply FAT filter
-        result <- result %>%
-            filter((is.na(FAT) | (FAT >= input$minFAT & FAT <= input$maxFAT)))
+        if ("FAT" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(FAT) | (FAT >= input$minFAT & FAT <= input$maxFAT)))
+        }
         
         # Apply YLD filter
-        result <- result %>%
-            filter((is.na(YLD) | (YLD >= input$minYLD & YLD <= input$maxYLD)))
+        if ("YLD" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(YLD) | (YLD >= input$minYLD & YLD <= input$maxYLD)))
+        }
         
         # Apply CW filter
-        result <- result %>%
-            filter((is.na(CW) | (CW >= input$minCW & CW <= input$maxCW)))
+        if ("CW" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(CW) | (CW >= input$minCW & CW <= input$maxCW)))
+        }
         
         # Apply DOC filter
-        result <- result %>%
-            filter((is.na(DOC) | (DOC >= input$minDoc & DOC <= input$maxDoc)))
+        if ("DOC" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(DOC) | (DOC >= input$minDoc & DOC <= input$maxDoc)))
+        }
         
         # Apply CONC filter
-        result <- result %>%
-            filter((is.na(CONC) | (CONC >= input$minConc & CONC <= input$maxConc)))
+        if ("CONC" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(CONC) | (CONC >= input$minConc & CONC <= input$maxConc)))
+        }
         
         # Apply MAINT filter
-        result <- result %>%
-            filter((is.na(MAINT) | (MAINT >= input$minMaint & MAINT <= input$maxMaint)))
+        if ("MAINT" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(MAINT) | (MAINT >= input$minMaint & MAINT <= input$maxMaint)))
+        }
         
         # Apply FDAM filter
-        result <- result %>%
-            filter((is.na(FDAM) | (FDAM >= input$minFdam & FDAM <= input$maxFdam)))
+        if ("FDAM" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(FDAM) | (FDAM >= input$minFdam & FDAM <= input$maxFdam)))
+        }
         
         # Apply MRATE filter
-        result <- result %>%
-            filter((is.na(MRATE) | (MRATE >= input$minMrate & MRATE <= input$maxMrate)))
+        if ("MRATE" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(MRATE) | (MRATE >= input$minMrate & MRATE <= input$maxMrate)))
+        }
         
         # Apply PELVIC filter
-        result <- result %>%
-            filter((is.na(PELVIC) | (PELVIC >= input$minPelvic & PELVIC <= input$maxPelvic)))
+        if ("PELVIC" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(PELVIC) | (PELVIC >= input$minPelvic & PELVIC <= input$maxPelvic)))
+        }
         
         # Apply HEIGHT filter
-        result <- result %>%
-            filter((is.na(HEIGHT) | (HEIGHT >= input$minHeight & HEIGHT <= input$maxHeight)))
+        if ("HEIGHT" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(HEIGHT) | (HEIGHT >= input$minHeight & HEIGHT <= input$maxHeight)))
+        }
         
         # Apply HYBRID filter
-        result <- result %>%
-            filter((is.na(HYBRID) | (HYBRID >= input$minHybrid & HYBRID <= input$maxHybrid)))
+        if ("HYBRID" %in% input$selectedTraits) {
+            result <- result %>%
+                filter((is.na(HYBRID) | (HYBRID >= input$minHybrid & HYBRID <= input$maxHybrid)))
+        }
         
         return(result)
     }
     
     output$bullTable <- renderTable({
         req(filtered_bulls())
+        req(input$selectedTraits)
         
         displayed_bulls <- filtered_bulls()
         
@@ -237,15 +294,29 @@ server <- function(input, output) {
             return(data.frame(Message = "No bulls found matching these criteria."))
         }
         
+        # Start with ID and Name
+        cols_to_select <- c("ID", "Name")
+        
+        # Add selected traits in order
+        trait_order <- c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW", 
+                         "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID")
+        
+        for (trait in trait_order) {
+            if (trait %in% input$selectedTraits) {
+                cols_to_select <- c(cols_to_select, trait)
+            }
+        }
+        
         # Format the output
         displayed_bulls %>%
-            select(ID, Name, Weight, Milk, Quality, REA, MARB, FAT, YLD, CW, DOC, CONC, MAINT, FDAM, MRATE, PELVIC, HEIGHT, HYBRID) %>%
+            select(all_of(cols_to_select)) %>%
             arrange(ID)
         
     }, striped = TRUE, hover = TRUE, bordered = TRUE)
     
     output$summaryTable <- renderTable({
         req(filtered_bulls())
+        req(input$selectedTraits)
         
         bulls_data <- filtered_bulls()
         
@@ -253,69 +324,53 @@ server <- function(input, output) {
             return(data.frame(Trait = character(), Mean = numeric(), Min = numeric(), Max = numeric()))
         }
         
+        # Build summary stats only for selected traits
+        trait_data <- list()
+        trait_names <- c()
+        
+        trait_info <- list(
+            Weight = "Weight",
+            Milk = "Milk",
+            Quality = "Quality",
+            REA = "REA",
+            MARB = "MARB",
+            FAT = "FAT",
+            YLD = "YLD",
+            CW = "CW",
+            DOC = "DOC",
+            CONC = "CONC",
+            MAINT = "MAINT",
+            FDAM = "FDAM",
+            MRATE = "MRATE",
+            PELVIC = "PELVIC",
+            HEIGHT = "HEIGHT",
+            HYBRID = "HYBRID"
+        )
+        
+        for (trait in input$selectedTraits) {
+            if (trait %in% names(bulls_data)) {
+                trait_data[[trait]] <- list(
+                    Mean = mean(bulls_data[[trait]], na.rm = TRUE),
+                    Min = min(bulls_data[[trait]], na.rm = TRUE),
+                    Max = max(bulls_data[[trait]], na.rm = TRUE)
+                )
+                trait_names <- c(trait_names, trait)
+            }
+        }
+        
         summary_stats <- data.frame(
-            Trait = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW", "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID"),
-            Mean = c(
-                mean(bulls_data$Weight, na.rm = TRUE),
-                mean(bulls_data$Milk, na.rm = TRUE),
-                mean(bulls_data$Quality, na.rm = TRUE),
-                mean(bulls_data$REA, na.rm = TRUE),
-                mean(bulls_data$MARB, na.rm = TRUE),
-                mean(bulls_data$FAT, na.rm = TRUE),
-                mean(bulls_data$YLD, na.rm = TRUE),
-                mean(bulls_data$CW, na.rm = TRUE),
-                mean(bulls_data$DOC, na.rm = TRUE),
-                mean(bulls_data$CONC, na.rm = TRUE),
-                mean(bulls_data$MAINT, na.rm = TRUE),
-                mean(bulls_data$FDAM, na.rm = TRUE),
-                mean(bulls_data$MRATE, na.rm = TRUE),
-                mean(bulls_data$PELVIC, na.rm = TRUE),
-                mean(bulls_data$HEIGHT, na.rm = TRUE),
-                mean(bulls_data$HYBRID, na.rm = TRUE)
-            ),
-            Min = c(
-                min(bulls_data$Weight, na.rm = TRUE),
-                min(bulls_data$Milk, na.rm = TRUE),
-                min(bulls_data$Quality, na.rm = TRUE),
-                min(bulls_data$REA, na.rm = TRUE),
-                min(bulls_data$MARB, na.rm = TRUE),
-                min(bulls_data$FAT, na.rm = TRUE),
-                min(bulls_data$YLD, na.rm = TRUE),
-                min(bulls_data$CW, na.rm = TRUE),
-                min(bulls_data$DOC, na.rm = TRUE),
-                min(bulls_data$CONC, na.rm = TRUE),
-                min(bulls_data$MAINT, na.rm = TRUE),
-                min(bulls_data$FDAM, na.rm = TRUE),
-                min(bulls_data$MRATE, na.rm = TRUE),
-                min(bulls_data$PELVIC, na.rm = TRUE),
-                min(bulls_data$HEIGHT, na.rm = TRUE),
-                min(bulls_data$HYBRID, na.rm = TRUE)
-            ),
-            Max = c(
-                max(bulls_data$Weight, na.rm = TRUE),
-                max(bulls_data$Milk, na.rm = TRUE),
-                max(bulls_data$Quality, na.rm = TRUE),
-                max(bulls_data$REA, na.rm = TRUE),
-                max(bulls_data$MARB, na.rm = TRUE),
-                max(bulls_data$FAT, na.rm = TRUE),
-                max(bulls_data$YLD, na.rm = TRUE),
-                max(bulls_data$CW, na.rm = TRUE),
-                max(bulls_data$DOC, na.rm = TRUE),
-                max(bulls_data$CONC, na.rm = TRUE),
-                max(bulls_data$MAINT, na.rm = TRUE),
-                max(bulls_data$FDAM, na.rm = TRUE),
-                max(bulls_data$MRATE, na.rm = TRUE),
-                max(bulls_data$PELVIC, na.rm = TRUE),
-                max(bulls_data$HEIGHT, na.rm = TRUE),
-                max(bulls_data$HYBRID, na.rm = TRUE)
-            ),
-            stringsAsFactors = FALSE
+            Trait = trait_names,
+            Mean = sapply(trait_names, function(t) trait_data[[t]]$Mean),
+            Min = sapply(trait_names, function(t) trait_data[[t]]$Min),
+            Max = sapply(trait_names, function(t) trait_data[[t]]$Max),
+            stringsAsFactors = FALSE,
+            row.names = NULL
         )
         
         # Format to 2 decimal places
-        summary_stats[] <- lapply(summary_stats, function(x) {
-            if (is.numeric(x)) round(x, 2) else x
-        })
+        summary_stats$Mean <- round(summary_stats$Mean, 2)
+        summary_stats$Min <- round(summary_stats$Min, 2)
+        summary_stats$Max <- round(summary_stats$Max, 2)
         
         summary_stats
     }, striped = TRUE, hover = TRUE, bordered = TRUE)
