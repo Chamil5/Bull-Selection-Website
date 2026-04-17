@@ -1,362 +1,787 @@
 library(shiny)
+library(pdftools)
 library(shinyjs)
 library(dplyr)
-library(pdftools)
 
-# Set the maximum request size to 200 MB
-options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
-
-# Define UI for the application
+# UI Definition
 ui <- fluidPage(
-    useShinyjs(),
-    
-    # Western Theme CSS
+    shinyjs::useShinyjs(),
     tags$head(
         tags$style(HTML("
-            /* Main background and text */
-            body {
-                background-color: #1a1a1a;
-                color: #fff;
-                font-family: 'Georgia', serif;
-            }
-            
-            /* Title styling */
-            .navbar-default {
-                background-color: #2d2d2d;
-                border-color: #ff8c00;
-                border-bottom: 4px solid #ff8c00;
-            }
-            
-            .page-header {
-                border-bottom: 3px solid #ff8c00;
-                padding-bottom: 20px;
-                margin-bottom: 30px;
-            }
-            
-            .page-header h1 {
-                color: #ff8c00;
-                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-                font-weight: bold;
-                letter-spacing: 2px;
-            }
-            
-            /* Sidebar styling */
-            .well {
-                background-color: #2d2d2d;
-                border: 2px solid #ff8c00;
-                border-radius: 8px;
-                box-shadow: 0 4px 8px rgba(0,0,0,0.4);
-            }
-            
-            /* Section headers */
-            h4 {
-                color: #ff8c00;
-                font-weight: bold;
-                border-bottom: 2px solid #ff8c00;
-                padding-bottom: 8px;
-                margin-top: 20px;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-            
-            h3 {
-                color: #ff8c00;
-                font-weight: bold;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-            
-            /* Button styling */
-            .btn-primary {
-                background-color: #ff8c00;
-                border-color: #1a1a1a;
-                color: #000;
-                font-weight: bold;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-                border: 2px solid #000;
-                transition: all 0.3s ease;
-            }
-            
-            .btn-primary:hover {
-                background-color: #e67e00;
-                border-color: #ff8c00;
-                color: #fff;
-                box-shadow: 0 0 15px rgba(255, 140, 0, 0.6);
-            }
-            
-            .btn-primary:focus {
-                background-color: #ff8c00;
-                border-color: #1a1a1a;
-                box-shadow: 0 0 10px rgba(255, 140, 0, 0.4);
-            }
-            
-            .btn-lg {
-                padding: 15px 30px;
-                font-size: 16px;
-                width: 100%;
-                margin-bottom: 20px;
-            }
-            
-            /* Input fields */
-            input[type='text'],
-            input[type='number'],
-            select {
-                background-color: #1a1a1a;
-                color: #ff8c00;
-                border: 2px solid #ff8c00;
-                border-radius: 4px;
-                padding: 8px 12px;
-            }
-            
-            input[type='text']:focus,
-            input[type='number']:focus,
-            select:focus {
-                background-color: #2d2d2d;
-                color: #fff;
-                border-color: #ff8c00;
-                box-shadow: 0 0 10px rgba(255, 140, 0, 0.3);
-            }
-            
-            /* Checkbox styling */
-            .checkbox {
-                color: #ff8c00;
-            }
-            
-            .checkbox input[type='checkbox'] {
-                accent-color: #ff8c00;
-            }
-            
-            .checkbox label {
-                color: #fff;
-                margin-left: 8px;
-            }
-            
-            /* Horizontal rule */
-            hr {
-                border-color: #ff8c00;
-                margin: 20px 0;
-            }
-            
-            /* Table styling */
-            table {
-                background-color: #2d2d2d;
-                color: #000;
-                border: 2px solid #ff8c00;
-                border-radius: 4px;
-                overflow: hidden;
-                width: 100%;
-            }
-            
-            thead {
-                background-color: #ff8c00;
-                color: #000;
-                font-weight: bold;
-                text-transform: uppercase;
-                letter-spacing: 1px;
-            }
-            
-            tbody {
-                color: #000;
-            }
-            
-            tbody tr:nth-child(odd) {
-                background-color: #e8e8e8;
-            }
-            
-            tbody tr:nth-child(even) {
-                background-color: #f5f5f5;
-            }
-            
-            tbody tr:hover {
-                background-color: #d0d0d0;
-                box-shadow: inset 0 0 10px rgba(255, 140, 0, 0.2);
-            }
-            
-            /* Progress message */
-            #progress {
-                color: #ff8c00;
-                font-weight: bold;
-                padding: 12px;
-                background-color: #2d2d2d;
-                border-left: 4px solid #ff8c00;
-                margin: 15px 0;
-                border-radius: 4px;
-            }
-            
-            /* File input */
-            .form-group {
-                margin-bottom: 20px;
-            }
-            
-            label {
-                color: #ff8c00;
-                font-weight: bold;
-                display: block;
-                margin-bottom: 8px;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-            }
-            
-            /* Main panel */
-            .form-control {
-                background-color: #1a1a1a;
-                border: 2px solid #ff8c00;
-                color: #ff8c00;
-            }
-            
-            /* Western decoration elements */
-            .container-fluid {
-                background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
-            }
-            
-            /* Table wrapper for scrolling */
-            .table-wrapper {
-                overflow-x: auto;
-                max-height: 800px;
-                overflow-y: auto;
-            }
-            
-            /* Responsive adjustments */
-            @media (max-width: 768px) {
-                .page-header h1 {
-                    font-size: 24px;
-                }
-                
-                .btn-lg {
-                    padding: 10px 20px;
-                    font-size: 14px;
-                }
-            }
-        "))
+      body {
+        background: linear-gradient(135deg, #8B4513 0%, #D2691E 100%);
+        font-family: 'Georgia', serif;
+        color: #333;
+      }
+      
+      .navbar {
+        background-color: #654321 !important;
+        border-bottom: 3px solid #8B4513;
+      }
+      
+      .navbar-brand {
+        font-size: 24px !important;
+        font-weight: bold;
+        color: #FFD700 !important;
+      }
+      
+      .panel {
+        background-color: rgba(255, 248, 240, 0.95);
+        border: 2px solid #8B4513;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+      }
+      
+      .panel-heading {
+        background-color: #8B4513 !important;
+        color: #FFD700 !important;
+        font-weight: bold;
+        border: none !important;
+      }
+      
+      .btn-primary {
+        background-color: #CD853F !important;
+        border-color: #8B4513 !important;
+      }
+      
+      .btn-primary:hover {
+        background-color: #8B4513 !important;
+        border-color: #654321 !important;
+      }
+      
+      .btn-success {
+        background-color: #228B22 !important;
+        border-color: #1a6b1a !important;
+      }
+      
+      .btn-success:hover {
+        background-color: #1a6b1a !important;
+        border-color: #0d3d0d !important;
+      }
+      
+      .btn-danger {
+        background-color: #DC143C !important;
+        border-color: #8B0000 !important;
+      }
+      
+      .btn-danger:hover {
+        background-color: #8B0000 !important;
+        border-color: #660000 !important;
+      }
+      
+      h1, h2, h3, h4 {
+        color: #654321;
+        font-weight: bold;
+      }
+      
+      .well {
+        background-color: rgba(255, 250, 240, 0.9);
+        border: 2px solid #CD853F;
+      }
+      
+      .progress {
+        background-color: #ddd;
+      }
+      
+      .progress-bar {
+        background-color: #CD853F !important;
+      }
+      
+      table {
+        background-color: white;
+        border-collapse: collapse;
+      }
+      
+      table th {
+        background-color: #8B4513;
+        color: #FFD700;
+        font-weight: bold;
+        border: 1px solid #654321;
+      }
+      
+      table td {
+        border: 1px solid #D2691E;
+        padding: 8px;
+      }
+      
+      table tr:nth-child(even) {
+        background-color: #FFF8DC;
+      }
+      
+      table tr:hover {
+        background-color: #FFEFD5;
+      }
+      
+      .info-box {
+        background-color: #FFFACD;
+        border-left: 4px solid #8B4513;
+        padding: 10px;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+      
+      .error-message {
+        color: #8B0000;
+        font-weight: bold;
+      }
+      
+      .success-message {
+        color: #228B22;
+        font-weight: bold;
+      }
+    "))
     ),
     
-    titlePanel("Bull EPD Selection"),
-    
-    sidebarLayout(
-        sidebarPanel(
-            # PDF Upload at the top
-            fileInput("pdfInput", "Upload Bull Sale Magazine (PDF)", 
-                      accept = c("application/pdf"), 
-                      multiple = FALSE),
-            
-            textInput("pdfPath", "Or paste PDF file path:", 
-                      placeholder = "/Users/your-name/Downloads/filename.pdf"),
-            
-            actionButton("extractButton", "Extract EPDs", class = "btn-primary btn-lg"),
-            htmlOutput("progress"),
-            hr(),
-            
-            h4("Select Traits to Extract"),
-            checkboxGroupInput("selectedTraits", "Traits:",
-                               choices = c(
-                                   "Weight" = "Weight",
-                                   "Milk" = "Milk",
-                                   "Quality" = "Quality",
-                                   "REA" = "REA",
-                                   "MARB" = "MARB",
-                                   "FAT" = "FAT",
-                                   "YLD" = "YLD",
-                                   "CW" = "CW",
-                                   "DOC" = "DOC",
-                                   "CONC" = "CONC",
-                                   "MAINT" = "MAINT",
-                                   "FDAM" = "FDAM",
-                                   "MRATE" = "MRATE",
-                                   "PELVIC" = "PELVIC",
-                                   "HEIGHT" = "HEIGHT",
-                                   "HYBRID" = "HYBRID"
-                               ),
-                               selected = c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW"),
-                               inline = FALSE),
-            hr(),
-            
-            h4("Desired EPD Ranges"),
+    # Navigation Bar
+    navbarPage(
+        "🤠 Angus Bull EPD Analyzer 🤠",
+        id = "navbar",
+        
+        # Tab 1: Upload and Extract
+        tabPanel(
+            "📄 Upload & Extract",
             fluidRow(
-                column(6, numericInput("minWeight", "Min Weight", value = -50)),
-                column(6, numericInput("maxWeight", "Max Weight", value = 150))
-            ),
-            fluidRow(
-                column(6, numericInput("minMilk", "Min Milk", value = -10)),
-                column(6, numericInput("maxMilk", "Max Milk", value = 100))
-            ),
-            fluidRow(
-                column(6, numericInput("minQuality", "Min Quality", value = -5)),
-                column(6, numericInput("maxQuality", "Max Quality", value = 5))
-            ),
-            fluidRow(
-                column(6, numericInput("minREA", "Min REA", value = -0.5)),
-                column(6, numericInput("maxREA", "Max REA", value = 2))
-            ),
-            fluidRow(
-                column(6, numericInput("minMARB", "Min MARB", value = -1)),
-                column(6, numericInput("maxMARB", "Max MARB", value = 2))
-            ),
-            fluidRow(
-                column(6, numericInput("minFAT", "Min FAT", value = -0.5)),
-                column(6, numericInput("maxFAT", "Max FAT", value = 1))
-            ),
-            fluidRow(
-                column(6, numericInput("minYLD", "Min YLD", value = -3)),
-                column(6, numericInput("maxYLD", "Max YLD", value = 3))
-            ),
-            fluidRow(
-                column(6, numericInput("minCW", "Min CW", value = -50)),
-                column(6, numericInput("maxCW", "Max CW", value = 150))
-            ),
-            fluidRow(
-                column(6, numericInput("minDoc", "Min DOC", value = -5)),
-                column(6, numericInput("maxDoc", "Max DOC", value = 5))
-            ),
-            fluidRow(
-                column(6, numericInput("minConc", "Min CONC", value = -2)),
-                column(6, numericInput("maxConc", "Max CONC", value = 2))
-            ),
-            fluidRow(
-                column(6, numericInput("minMaint", "Min MAINT", value = -10)),
-                column(6, numericInput("maxMaint", "Max MAINT", value = 10))
-            ),
-            fluidRow(
-                column(6, numericInput("minFdam", "Min FDAM", value = -5)),
-                column(6, numericInput("maxFdam", "Max FDAM", value = 5))
-            ),
-            fluidRow(
-                column(6, numericInput("minMrate", "Min MRATE", value = -2)),
-                column(6, numericInput("maxMrate", "Max MRATE", value = 2))
-            ),
-            fluidRow(
-                column(6, numericInput("minPelvic", "Min PELVIC", value = 0)),
-                column(6, numericInput("maxPelvic", "Max PELVIC", value = 5))
-            ),
-            fluidRow(
-                column(6, numericInput("minHeight", "Min HEIGHT", value = 45)),
-                column(6, numericInput("maxHeight", "Max HEIGHT", value = 55))
-            ),
-            fluidRow(
-                column(6, numericInput("minHybrid", "Min HYBRID", value = -5)),
-                column(6, numericInput("maxHybrid", "Max HYBRID", value = 5))
-            ),
-            width = 3
+                column(
+                    12,
+                    div(
+                        class = "well",
+                        h2("Step 1: Upload Your Angus Sale PDF"),
+                        p("Choose a PDF file or provide a direct file path to analyze bull EPDs."),
+                        fileInput(
+                            "pdfInput",
+                            "Choose PDF file:",
+                            accept = c("application/pdf"),
+                            multiple = FALSE
+                        ),
+                        p("OR", style = "text-align: center; font-weight: bold;"),
+                        textInput(
+                            "pdfPath",
+                            "Provide file path directly:",
+                            placeholder = "e.g., /Users/cadehamil/Downloads/your-file.pdf"
+                        ),
+                        p(
+                            "Note: You can use either the file upload or provide a direct path. The file size limit is 200MB.",
+                            class = "info-box"
+                        ),
+                        actionButton(
+                            "extractButton",
+                            "📊 Extract EPDs from PDF",
+                            class = "btn-success",
+                            style = "width: 100%; padding: 10px; font-size: 16px; font-weight: bold;"
+                        ),
+                        br(),
+                        br(),
+                        textOutput("progress"),
+                        br()
+                    )
+                )
+            )
         ),
         
-        mainPanel(
-            h3("Filtered Bulls"),
-            div(class = "table-wrapper",
-                tableOutput("bullTable")
+        # Tab 2: Filter and Analyze
+        tabPanel(
+            "🔍 Filter & Analyze",
+            fluidRow(
+                column(
+                    3,
+                    div(
+                        class = "panel panel-primary",
+                        div(
+                            class = "panel-heading",
+                            "Filter Specifications"
+                        ),
+                        div(
+                            class = "panel-body",
+                            h4("Weight EPD"),
+                            sliderInput(
+                                "weightRange",
+                                "Range:",
+                                min = -200,
+                                max = 200,
+                                value = c(-200, 200),
+                                step = 1
+                            ),
+                            h4("Milk EPD"),
+                            sliderInput(
+                                "milkRange",
+                                "Range:",
+                                min = -50,
+                                max = 100,
+                                value = c(-50, 100),
+                                step = 1
+                            ),
+                            h4("Quality Grade EPD"),
+                            sliderInput(
+                                "qualityRange",
+                                "Range:",
+                                min = -3,
+                                max = 3,
+                                value = c(-3, 3),
+                                step = 0.1
+                            ),
+                            h4("REA (Ribeye Area) EPD"),
+                            sliderInput(
+                                "reaRange",
+                                "Range:",
+                                min = -3,
+                                max = 3,
+                                value = c(-3, 3),
+                                step = 0.1
+                            ),
+                            h4("MARB (Marbling) EPD"),
+                            sliderInput(
+                                "marbRange",
+                                "Range:",
+                                min = -3,
+                                max = 3,
+                                value = c(-3, 3),
+                                step = 0.1
+                            ),
+                            h4("FAT EPD"),
+                            sliderInput(
+                                "fatRange",
+                                "Range:",
+                                min = -1,
+                                max = 1,
+                                value = c(-1, 1),
+                                step = 0.05
+                            ),
+                            h4("Yield EPD"),
+                            sliderInput(
+                                "yldRange",
+                                "Range:",
+                                min = -3,
+                                max = 3,
+                                value = c(-3, 3),
+                                step = 0.1
+                            ),
+                            h4("Carcass Weight EPD"),
+                            sliderInput(
+                                "cwRange",
+                                "Range:",
+                                min = -200,
+                                max = 200,
+                                value = c(-200, 200),
+                                step = 1
+                            ),
+                            actionButton(
+                                "resetFilters",
+                                "Reset to Defaults",
+                                class = "btn-warning",
+                                style = "width: 100%;"
+                            )
+                        )
+                    )
+                ),
+                
+                column(
+                    9,
+                    div(
+                        class = "panel panel-primary",
+                        div(
+                            class = "panel-heading",
+                            "Bulls Matching Your Criteria"
+                        ),
+                        div(
+                            class = "panel-body",
+                            fluidRow(
+                                column(
+                                    6,
+                                    h4(textOutput("bullCount"))
+                                ),
+                                column(
+                                    6,
+                                    downloadButton(
+                                        "downloadData",
+                                        "📥 Download Results as CSV",
+                                        class = "btn-primary",
+                                        style = "float: right;"
+                                    )
+                                )
+                            ),
+                            br(),
+                            dataTableOutput("bullsTable")
+                        )
+                    )
+                )
             ),
-            hr(),
-            h4("Summary Statistics"),
-            tableOutput("summaryTable"),
-            width = 9
+            
+            # Summary Statistics
+            fluidRow(
+                column(
+                    12,
+                    div(
+                        class = "panel panel-info",
+                        div(
+                            class = "panel-heading",
+                            "Summary Statistics"
+                        ),
+                        div(
+                            class = "panel-body",
+                            fluidRow(
+                                column(
+                                    2,
+                                    h4("Statistic"),
+                                    p("Mean Weight"),
+                                    p("Mean Milk"),
+                                    p("Mean Quality"),
+                                    p("Mean REA"),
+                                    p("Mean MARB"),
+                                    p("Mean FAT"),
+                                    p("Mean Yield"),
+                                    p("Mean CW")
+                                ),
+                                column(
+                                    2,
+                                    h4("Your Results"),
+                                    textOutput("stat_weight"),
+                                    textOutput("stat_milk"),
+                                    textOutput("stat_quality"),
+                                    textOutput("stat_rea"),
+                                    textOutput("stat_marb"),
+                                    textOutput("stat_fat"),
+                                    textOutput("stat_yld"),
+                                    textOutput("stat_cw")
+                                ),
+                                column(
+                                    2,
+                                    h4("Sale Average"),
+                                    textOutput("stat_weight_all"),
+                                    textOutput("stat_milk_all"),
+                                    textOutput("stat_quality_all"),
+                                    textOutput("stat_rea_all"),
+                                    textOutput("stat_marb_all"),
+                                    textOutput("stat_fat_all"),
+                                    textOutput("stat_yld_all"),
+                                    textOutput("stat_cw_all")
+                                ),
+                                column(
+                                    2,
+                                    h4("Difference"),
+                                    textOutput("stat_weight_diff"),
+                                    textOutput("stat_milk_diff"),
+                                    textOutput("stat_quality_diff"),
+                                    textOutput("stat_rea_diff"),
+                                    textOutput("stat_marb_diff"),
+                                    textOutput("stat_fat_diff"),
+                                    textOutput("stat_yld_diff"),
+                                    textOutput("stat_cw_diff")
+                                ),
+                                column(
+                                    4,
+                                    h4("Insights"),
+                                    textOutput("insights")
+                                )
+                            )
+                        )
+                    )
+                )
+            )
         )
     )
 )
 
-# Define server logic
-server <- function(input, output) {
-    all_bulls <- reactiveVal(data.frame())
-    filtered_bulls <- reactiveVal(data.frame())
+# Helper Functions
+create_empty_bulls_df <- function() {
+    data.frame(
+        Lot = character(),
+        ID = character(),
+        Name = character(),
+        Weight = numeric(),
+        Milk = numeric(),
+        Quality = numeric(),
+        REA = numeric(),
+        MARB = numeric(),
+        FAT = numeric(),
+        YLD = numeric(),
+        CW = numeric(),
+        DOC = numeric(),
+        CONC = numeric(),
+        MAINT = numeric(),
+        FDAM = numeric(),
+        MRATE = numeric(),
+        PELVIC = numeric(),
+        HEIGHT = numeric(),
+        HYBRID = numeric(),
+        stringsAsFactors = FALSE
+    )
+}
+
+# Extract bulls using flexible labeled regex
+extract_bulls_flexible <- function(text) {
+    bulls_df <- create_empty_bulls_df()
     
+    # Pattern: Look for "Weight: X" type patterns
+    weight_pattern <- "Weight[:\\s]+(-?\\d+\\.?\\d*)"
+    milk_pattern <- "Milk[:\\s]+(-?\\d+\\.?\\d*)"
+    quality_pattern <- "Quality[:\\s]+(-?\\d+\\.?\\d*)"
+    rea_pattern <- "REA[:\\s]+(-?\\d+\\.?\\d*)"
+    marb_pattern <- "Marb[a-z]*[:\\s]+(-?\\d+\\.?\\d*)"
+    
+    # Try to identify bull entries (typically marked by lot or ID)
+    lot_pattern <- "Lot\\s+(\\d+)"
+    
+    lots <- gregexpr(lot_pattern, text)
+    if (lots[[1]][1] != -1) {
+        lot_matches <- regmatches(text, lots)[[1]]
+        
+        for (lot_match in lot_matches) {
+            tryCatch({
+                lot_num <- gsub("Lot\\s+", "", lot_match)
+                
+                # Extract surrounding EPD values
+                lot_pos <- gregexpr(gsub("\\\\", "", lot_match), text)[[1]][1]
+                text_around <- substr(text, lot_pos, min(lot_pos + 500, nchar(text)))
+                
+                weight_val <- as.numeric(regmatches(text_around, gregexpr(weight_pattern, text_around))[[1]][1])
+                milk_val <- as.numeric(regmatches(text_around, gregexpr(milk_pattern, text_around))[[1]][1])
+                quality_val <- as.numeric(regmatches(text_around, gregexpr(quality_pattern, text_around))[[1]][1])
+                rea_val <- as.numeric(regmatches(text_around, gregexpr(rea_pattern, text_around))[[1]][1])
+                marb_val <- as.numeric(regmatches(text_around, gregexpr(marb_pattern, text_around))[[1]][1])
+                
+                if (!is.na(weight_val) && !is.na(milk_val)) {
+                    new_row <- data.frame(
+                        Lot = lot_num,
+                        ID = lot_num,
+                        Name = paste("Bull", lot_num),
+                        Weight = weight_val,
+                        Milk = milk_val,
+                        Quality = quality_val,
+                        REA = rea_val,
+                        MARB = marb_val,
+                        FAT = NA,
+                        YLD = NA,
+                        CW = NA,
+                        DOC = NA,
+                        CONC = NA,
+                        MAINT = NA,
+                        FDAM = NA,
+                        MRATE = NA,
+                        PELVIC = NA,
+                        HEIGHT = NA,
+                        HYBRID = NA,
+                        stringsAsFactors = FALSE
+                    )
+                    bulls_df <- rbind(bulls_df, new_row)
+                }
+            }, error = function(e) {})
+        }
+    }
+    
+    return(bulls_df)
+}
+
+# Extract bulls by line-based positional numeric density
+extract_bulls_by_lines <- function(text) {
+    bulls_df <- create_empty_bulls_df()
+    
+    lines <- unlist(strsplit(text, "(?<=[.!?]\\s)(?=[A-Z])", perl = TRUE))
+    
+    for (line in lines) {
+        line <- trimws(line)
+        if (nchar(line) < 15) next
+        
+        tokens <- unlist(strsplit(line, "\\s+"))
+        numeric_count <- sum(grepl("^-?\\d+\\.?\\d*$", tokens))
+        
+        if (numeric_count >= 3) {
+            tryCatch({
+                lot <- tokens[1]
+                name <- tokens[2]
+                
+                epd_vals <- as.numeric(tokens[grep("^-?\\d+\\.?\\d*$", tokens)])
+                
+                if (length(epd_vals) >= 3 && grepl("\\d", lot)) {
+                    new_row <- data.frame(
+                        Lot = lot,
+                        ID = lot,
+                        Name = name,
+                        Weight = if(length(epd_vals) > 0) epd_vals[1] else NA,
+                        Milk = if(length(epd_vals) > 1) epd_vals[2] else NA,
+                        Quality = if(length(epd_vals) > 2) epd_vals[3] else NA,
+                        REA = if(length(epd_vals) > 3) epd_vals[4] else NA,
+                        MARB = if(length(epd_vals) > 4) epd_vals[5] else NA,
+                        FAT = if(length(epd_vals) > 5) epd_vals[6] else NA,
+                        YLD = if(length(epd_vals) > 6) epd_vals[7] else NA,
+                        CW = if(length(epd_vals) > 7) epd_vals[8] else NA,
+                        DOC = if(length(epd_vals) > 8) epd_vals[9] else NA,
+                        CONC = if(length(epd_vals) > 9) epd_vals[10] else NA,
+                        MAINT = if(length(epd_vals) > 10) epd_vals[11] else NA,
+                        FDAM = if(length(epd_vals) > 11) epd_vals[12] else NA,
+                        MRATE = if(length(epd_vals) > 12) epd_vals[13] else NA,
+                        PELVIC = if(length(epd_vals) > 13) epd_vals[14] else NA,
+                        HEIGHT = if(length(epd_vals) > 14) epd_vals[15] else NA,
+                        HYBRID = if(length(epd_vals) > 15) epd_vals[16] else NA,
+                        stringsAsFactors = FALSE
+                    )
+                    bulls_df <- rbind(bulls_df, new_row)
+                }
+            }, error = function(e) {})
+        }
+    }
+    
+    if (nrow(bulls_df) > 0) {
+        bulls_df <- bulls_df[!duplicated(bulls_df$ID), ]
+    }
+    
+    return(bulls_df)
+}
+
+# Advanced extraction with pattern matching
+extract_bulls_advanced <- function(text) {
+    bulls_df <- create_empty_bulls_df()
+    
+    # Split by lot/ID patterns
+    text_chunks <- unlist(strsplit(text, "(?=^\\s*\\d+\\s+)", perl = TRUE))
+    
+    for (chunk in text_chunks) {
+        chunk <- trimws(chunk)
+        if (nchar(chunk) < 10) next
+        
+        tryCatch({
+            lines <- unlist(strsplit(chunk, "\n"))
+            if (length(lines) == 0) next
+            
+            first_line <- trimws(lines[1])
+            tokens <- unlist(strsplit(first_line, "\\s+"))
+            
+            if (length(tokens) < 2) next
+            if (!grepl("^\\d", tokens[1])) next
+            
+            lot <- tokens[1]
+            
+            # Find name (capital letter sequences)
+            name_tokens <- c()
+            for (i in 2:min(4, length(tokens))) {
+                if (grepl("^[A-Z][a-z]*$", tokens[i])) {
+                    name_tokens <- c(name_tokens, tokens[i])
+                } else if (grepl("^-?\\d", tokens[i])) {
+                    break
+                }
+            }
+            
+            name <- paste(name_tokens, collapse = " ")
+            if (name == "") name <- paste("Bull", lot)
+            
+            # Extract numeric EPD values
+            epd_values <- c()
+            for (i in 2:length(tokens)) {
+                val <- suppressWarnings(as.numeric(tokens[i]))
+                if (!is.na(val) && abs(val) < 1000) {
+                    epd_values <- c(epd_values, val)
+                }
+            }
+            
+            if (length(epd_values) >= 3) {
+                new_row <- data.frame(
+                    Lot = lot,
+                    ID = lot,
+                    Name = name,
+                    Weight = if(length(epd_values) > 0) epd_values[1] else NA,
+                    Milk = if(length(epd_values) > 1) epd_values[2] else NA,
+                    Quality = if(length(epd_values) > 2) epd_values[3] else NA,
+                    REA = if(length(epd_values) > 3) epd_values[4] else NA,
+                    MARB = if(length(epd_values) > 4) epd_values[5] else NA,
+                    FAT = if(length(epd_values) > 5) epd_values[6] else NA,
+                    YLD = if(length(epd_values) > 6) epd_values[7] else NA,
+                    CW = if(length(epd_values) > 7) epd_values[8] else NA,
+                    DOC = if(length(epd_values) > 8) epd_values[9] else NA,
+                    CONC = if(length(epd_values) > 9) epd_values[10] else NA,
+                    MAINT = if(length(epd_values) > 10) epd_values[11] else NA,
+                    FDAM = if(length(epd_values) > 11) epd_values[12] else NA,
+                    MRATE = if(length(epd_values) > 12) epd_values[13] else NA,
+                    PELVIC = if(length(epd_values) > 13) epd_values[14] else NA,
+                    HEIGHT = if(length(epd_values) > 14) epd_values[15] else NA,
+                    HYBRID = if(length(epd_values) > 15) epd_values[16] else NA,
+                    stringsAsFactors = FALSE
+                )
+                bulls_df <- rbind(bulls_df, new_row)
+            }
+        }, error = function(e) {})
+    }
+    
+    if (nrow(bulls_df) > 0) {
+        bulls_df <- bulls_df[!duplicated(bulls_df$ID), ]
+    }
+    
+    return(bulls_df)
+}
+
+# Specialized extraction for table-formatted PDFs
+extract_bulls_from_tables <- function(text_clean, text_raw) {
+    bulls_df <- create_empty_bulls_df()
+    
+    # Split by common table separators and patterns
+    lines_raw <- unlist(strsplit(paste(text_raw, collapse = "\n"), "\n"))
+    lines <- unlist(strsplit(text_clean, "\\s{3,}"))
+    
+    cat("\nDEBUG: Total lines extracted:", length(lines), "\n")
+    
+    # Pattern 1: Look for lines that start with numbers (lot numbers)
+    for (i in seq_along(lines)) {
+        line <- trimws(lines[i])
+        
+        # Skip empty lines and headers
+        if (nchar(line) < 10) next
+        
+        # Look for a line that starts with a number
+        if (grepl("^\\d+", line)) {
+            tryCatch({
+                # Extract all tokens from the line
+                tokens <- trimws(unlist(strsplit(line, "\\s+")))
+                
+                cat("\nDEBUG: Line", i, "tokens:", length(tokens), "\n")
+                cat("First 10 tokens:", paste(head(tokens, 10), collapse=" | "), "\n")
+                
+                # Extract lot (first number)
+                lot <- NA
+                id <- NA
+                name <- NA
+                epd_start_idx <- 1
+                
+                # Try to identify lot, ID, and name
+                if (length(tokens) > 0 && grepl("^\\d+$", tokens[1])) {
+                    lot <- tokens[1]
+                    epd_start_idx <- 2
+                }
+                
+                if (length(tokens) > 1 && grepl("^\\d+", tokens[2])) {
+                    id <- tokens[2]
+                    epd_start_idx <- 3
+                }
+                
+                # Get name (next token or two if they're alphabetic)
+                if (length(tokens) > 2 && grepl("^[A-Za-z]", tokens[3])) {
+                    if (length(tokens) > 3 && grepl("^[A-Za-z]", tokens[4]) && !grepl("^-?\\d+", tokens[4])) {
+                        name <- paste(tokens[3], tokens[4])
+                        epd_start_idx <- 5
+                    } else {
+                        name <- tokens[3]
+                        epd_start_idx <- 4
+                    }
+                }
+                
+                # Extract EPD values (numbers after name)
+                epd_values <- c()
+                for (j in epd_start_idx:length(tokens)) {
+                    val <- suppressWarnings(as.numeric(tokens[j]))
+                    if (!is.na(val) && abs(val) < 1000) {
+                        epd_values <- c(epd_values, val)
+                    }
+                }
+                
+                cat("Extracted - Lot:", lot, "ID:", id, "Name:", name, "EPDs:", length(epd_values), "\n")
+                
+                # Only add if we have ID and at least 3 EPD values
+                if (!is.na(id) && !is.na(name) && length(epd_values) >= 3) {
+                    new_row <- data.frame(
+                        Lot = as.character(if(is.na(lot)) "" else lot),
+                        ID = as.character(id),
+                        Name = as.character(name),
+                        Weight = if(length(epd_values) > 0) epd_values[1] else NA,
+                        Milk = if(length(epd_values) > 1) epd_values[2] else NA,
+                        Quality = if(length(epd_values) > 2) epd_values[3] else NA,
+                        REA = if(length(epd_values) > 3) epd_values[4] else NA,
+                        MARB = if(length(epd_values) > 4) epd_values[5] else NA,
+                        FAT = if(length(epd_values) > 5) epd_values[6] else NA,
+                        YLD = if(length(epd_values) > 6) epd_values[7] else NA,
+                        CW = if(length(epd_values) > 7) epd_values[8] else NA,
+                        DOC = if(length(epd_values) > 8) epd_values[9] else NA,
+                        CONC = if(length(epd_values) > 9) epd_values[10] else NA,
+                        MAINT = if(length(epd_values) > 10) epd_values[11] else NA,
+                        FDAM = if(length(epd_values) > 11) epd_values[12] else NA,
+                        MRATE = if(length(epd_values) > 12) epd_values[13] else NA,
+                        PELVIC = if(length(epd_values) > 13) epd_values[14] else NA,
+                        HEIGHT = if(length(epd_values) > 14) epd_values[15] else NA,
+                        HYBRID = if(length(epd_values) > 15) epd_values[16] else NA,
+                        stringsAsFactors = FALSE
+                    )
+                    
+                    bulls_df <- rbind(bulls_df, new_row)
+                }
+            }, error = function(e) {
+                cat("Error processing line:", conditionMessage(e), "\n")
+            })
+        }
+    }
+    
+    # Remove duplicates
+    if (nrow(bulls_df) > 0) {
+        bulls_df <- bulls_df[!duplicated(bulls_df$ID), ]
+    }
+    
+    return(bulls_df)
+}
+
+# Apply user filters
+apply_user_filters <- function(bulls_df, input) {
+    filtered <- bulls_df
+    
+    if (!is.null(input$weightRange)) {
+        filtered <- filtered[
+            (is.na(filtered$Weight) | filtered$Weight >= input$weightRange[1]) &
+                (is.na(filtered$Weight) | filtered$Weight <= input$weightRange[2]),
+        ]
+    }
+    
+    if (!is.null(input$milkRange)) {
+        filtered <- filtered[
+            (is.na(filtered$Milk) | filtered$Milk >= input$milkRange[1]) &
+                (is.na(filtered$Milk) | filtered$Milk <= input$milkRange[2]),
+        ]
+    }
+    
+    if (!is.null(input$qualityRange)) {
+        filtered <- filtered[
+            (is.na(filtered$Quality) | filtered$Quality >= input$qualityRange[1]) &
+                (is.na(filtered$Quality) | filtered$Quality <= input$qualityRange[2]),
+        ]
+    }
+    
+    if (!is.null(input$reaRange)) {
+        filtered <- filtered[
+            (is.na(filtered$REA) | filtered$REA >= input$reaRange[1]) &
+                (is.na(filtered$REA) | filtered$REA <= input$reaRange[2]),
+        ]
+    }
+    
+    if (!is.null(input$marbRange)) {
+        filtered <- filtered[
+            (is.na(filtered$MARB) | filtered$MARB >= input$marbRange[1]) &
+                (is.na(filtered$MARB) | filtered$MARB <= input$marbRange[2]),
+        ]
+    }
+    
+    if (!is.null(input$fatRange)) {
+        filtered <- filtered[
+            (is.na(filtered$FAT) | filtered$FAT >= input$fatRange[1]) &
+                (is.na(filtered$FAT) | filtered$FAT <= input$fatRange[2]),
+        ]
+    }
+    
+    if (!is.null(input$yldRange)) {
+        filtered <- filtered[
+            (is.na(filtered$YLD) | filtered$YLD >= input$yldRange[1]) &
+                (is.na(filtered$YLD) | filtered$YLD <= input$yldRange[2]),
+        ]
+    }
+    
+    if (!is.null(input$cwRange)) {
+        filtered <- filtered[
+            (is.na(filtered$CW) | filtered$CW >= input$cwRange[1]) &
+                (is.na(filtered$CW) | filtered$CW <= input$cwRange[2]),
+        ]
+    }
+    
+    return(filtered)
+}
+
+# Server
+server <- function(input, output, session) {
+    all_bulls <- reactiveVal(create_empty_bulls_df())
+    filtered_bulls <- reactiveVal(create_empty_bulls_df())
+    
+    # Extract button event
     observeEvent(input$extractButton, {
         # Check if file is uploaded or path is provided
         if (is.null(input$pdfInput) && input$pdfPath == "") {
@@ -390,27 +815,64 @@ server <- function(input, output) {
             pdf_text <- pdf_text(pdf_path)
             full_text <- paste(pdf_text, collapse = " ")
             
-            # Print first 2000 characters for debugging
-            cat("\n=== PDF TEXT SAMPLE ===\n")
-            cat(substr(full_text, 1, 2000))
+            # Print first 5000 characters for better debugging
+            cat("\n=== PDF TEXT SAMPLE (First 5000 chars) ===\n")
+            cat(substr(full_text, 1, 5000))
             cat("\n=== END SAMPLE ===\n")
             
-            # Clean up the text
-            full_text <- gsub("\n", " ", full_text)
-            full_text <- gsub("\r", " ", full_text)
-            full_text <- gsub("\t", " ", full_text)
+            # Also print a sample of what the text looks like with line breaks preserved
+            cat("\n=== PDF TEXT SAMPLE (With line structure) ===\n")
+            pdf_text_sample <- head(pdf_text, 3)  # First 3 pages
+            for (i in seq_along(pdf_text_sample)) {
+                cat(sprintf("\n--- PAGE %d ---\n", i))
+                cat(substr(pdf_text_sample[i], 1, 2000))
+            }
+            cat("\n=== END PAGE SAMPLE ===\n")
             
-            # Extract bull data - try multiple methods
-            bulls_data <- extract_bulls_flexible(full_text)
+            # Clean up the text
+            full_text_clean <- gsub("\n", " ", full_text)
+            full_text_clean <- gsub("\r", " ", full_text_clean)
+            full_text_clean <- gsub("\t", " ", full_text_clean)
+            
+            # Extract bull data
+            bulls_data <- extract_bulls_flexible(full_text_clean)
+            cat("\nFlexible extraction found:", nrow(bulls_data), "bulls\n")
+            if (nrow(bulls_data) > 0) {
+                cat("Sample bull data:\n")
+                print(head(bulls_data, 3))
+            }
             
             # If no bulls found, try additional parsing methods
             if (nrow(bulls_data) == 0) {
-                bulls_data <- extract_bulls_by_lines(full_text)
+                cat("Trying line-based extraction...\n")
+                bulls_data <- extract_bulls_by_lines(full_text_clean)
+                cat("Line-based extraction found:", nrow(bulls_data), "bulls\n")
+                if (nrow(bulls_data) > 0) {
+                    cat("Sample bull data:\n")
+                    print(head(bulls_data, 3))
+                }
             }
             
             # If still no bulls, try the advanced pattern matching
             if (nrow(bulls_data) == 0) {
-                bulls_data <- extract_bulls_advanced(full_text)
+                cat("Trying advanced extraction...\n")
+                bulls_data <- extract_bulls_advanced(full_text_clean)
+                cat("Advanced extraction found:", nrow(bulls_data), "bulls\n")
+                if (nrow(bulls_data) > 0) {
+                    cat("Sample bull data:\n")
+                    print(head(bulls_data, 3))
+                }
+            }
+            
+            # Try a completely new method for this specific PDF format
+            if (nrow(bulls_data) == 0) {
+                cat("Trying specialized extraction for table format...\n")
+                bulls_data <- extract_bulls_from_tables(full_text_clean, pdf_text)
+                cat("Table extraction found:", nrow(bulls_data), "bulls\n")
+                if (nrow(bulls_data) > 0) {
+                    cat("Sample bull data:\n")
+                    print(head(bulls_data, 3))
+                }
             }
             
             # Store all bulls
@@ -439,521 +901,223 @@ server <- function(input, output) {
         })
     })
     
-    # Update filtered bulls when filters change
-    observeEvent({
-        input$minWeight
-        input$maxWeight
-        input$minMilk
-        input$maxMilk
-        input$minQuality
-        input$maxQuality
-        input$minREA
-        input$maxREA
-        input$minMARB
-        input$maxMARB
-        input$minFAT
-        input$maxFAT
-        input$minYLD
-        input$maxYLD
-        input$minCW
-        input$maxCW
-        input$minDoc
-        input$maxDoc
-        input$minConc
-        input$maxConc
-        input$minMaint
-        input$maxMaint
-        input$minFdam
-        input$maxFdam
-        input$minMrate
-        input$maxMrate
-        input$minPelvic
-        input$maxPelvic
-        input$minHeight
-        input$maxHeight
-        input$minHybrid
-        input$maxHybrid
-        input$selectedTraits
-    }, {
-        if (nrow(all_bulls()) > 0) {
-            bulls_filtered <- apply_user_filters(all_bulls(), input)
-            filtered_bulls(bulls_filtered)
-            
-            if (nrow(bulls_filtered) > 0) {
-                message_text <- paste(nrow(bulls_filtered), "bull(s) match your selected criteria!")
-            } else {
-                message_text <- "No bulls match your selected criteria. Try adjusting your ranges."
-            }
-            
-            output$progress <- renderText(message_text)
-        }
+    # Reset filters button
+    observeEvent(input$resetFilters, {
+        updateSliderInput(session, "weightRange", value = c(-200, 200))
+        updateSliderInput(session, "milkRange", value = c(-50, 100))
+        updateSliderInput(session, "qualityRange", value = c(-3, 3))
+        updateSliderInput(session, "reaRange", value = c(-3, 3))
+        updateSliderInput(session, "marbRange", value = c(-3, 3))
+        updateSliderInput(session, "fatRange", value = c(-1, 1))
+        updateSliderInput(session, "yldRange", value = c(-3, 3))
+        updateSliderInput(session, "cwRange", value = c(-200, 200))
     })
     
-    # Function to apply filters based on user inputs
-    apply_user_filters <- function(bulls_data, input) {
-        result <- bulls_data
-        
-        # Apply Weight filter
-        if ("Weight" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(Weight) | (Weight >= input$minWeight & Weight <= input$maxWeight))
-        }
-        
-        # Apply Milk filter
-        if ("Milk" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(Milk) | (Milk >= input$minMilk & Milk <= input$maxMilk))
-        }
-        
-        # Apply Quality filter
-        if ("Quality" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(Quality) | (Quality >= input$minQuality & Quality <= input$maxQuality))
-        }
-        
-        # Apply REA filter
-        if ("REA" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(REA) | (REA >= input$minREA & REA <= input$maxREA))
-        }
-        
-        # Apply MARB filter
-        if ("MARB" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(MARB) | (MARB >= input$minMARB & MARB <= input$maxMARB))
-        }
-        
-        # Apply FAT filter
-        if ("FAT" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(FAT) | (FAT >= input$minFAT & FAT <= input$maxFAT))
-        }
-        
-        # Apply YLD filter
-        if ("YLD" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(YLD) | (YLD >= input$minYLD & YLD <= input$maxYLD))
-        }
-        
-        # Apply CW filter
-        if ("CW" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(CW) | (CW >= input$minCW & CW <= input$maxCW))
-        }
-        
-        # Apply DOC filter
-        if ("DOC" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(DOC) | (DOC >= input$minDoc & DOC <= input$maxDoc))
-        }
-        
-        # Apply CONC filter
-        if ("CONC" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(CONC) | (CONC >= input$minConc & CONC <= input$maxConc))
-        }
-        
-        # Apply MAINT filter
-        if ("MAINT" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(MAINT) | (MAINT >= input$minMaint & MAINT <= input$maxMaint))
-        }
-        
-        # Apply FDAM filter
-        if ("FDAM" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(FDAM) | (FDAM >= input$minFdam & FDAM <= input$maxFdam))
-        }
-        
-        # Apply MRATE filter
-        if ("MRATE" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(MRATE) | (MRATE >= input$minMrate & MRATE <= input$maxMrate))
-        }
-        
-        # Apply PELVIC filter
-        if ("PELVIC" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(PELVIC) | (PELVIC >= input$minPelvic & PELVIC <= input$maxPelvic))
-        }
-        
-        # Apply HEIGHT filter
-        if ("HEIGHT" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(HEIGHT) | (HEIGHT >= input$minHeight & HEIGHT <= input$maxHeight))
-        }
-        
-        # Apply HYBRID filter
-        if ("HYBRID" %in% input$selectedTraits) {
-            result <- result %>%
-                filter(is.na(HYBRID) | (HYBRID >= input$minHybrid & HYBRID <= input$maxHybrid))
-        }
-        
-        return(result)
-    }
-    
-    output$bullTable <- renderTable({
-        req(filtered_bulls())
-        req(input$selectedTraits)
-        
-        displayed_bulls <- filtered_bulls()
-        
-        if (nrow(displayed_bulls) == 0) {
-            return(data.frame(Message = "No bulls found matching these criteria."))
-        }
-        
-        # Start with Lot, ID and Name
-        cols_to_select <- c("Lot", "ID", "Name")
-        
-        # Add selected traits in order
-        trait_order <- c("Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW", 
-                         "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID")
-        
-        for (trait in trait_order) {
-            if (trait %in% input$selectedTraits && trait %in% names(displayed_bulls)) {
-                cols_to_select <- c(cols_to_select, trait)
+    # Update filtered bulls based on slider changes
+    observeEvent(
+        list(
+            input$weightRange,
+            input$milkRange,
+            input$qualityRange,
+            input$reaRange,
+            input$marbRange,
+            input$fatRange,
+            input$yldRange,
+            input$cwRange
+        ),
+        {
+            if (nrow(all_bulls()) > 0) {
+                filtered_bulls(apply_user_filters(all_bulls(), input))
             }
         }
-        
-        # Format the output
-        displayed_bulls %>%
-            select(all_of(cols_to_select)) %>%
-            arrange(as.numeric(Lot), as.numeric(ID)) %>%
-            mutate(across(where(is.numeric), ~round(., 2)))
-        
-    }, striped = TRUE, hover = TRUE, bordered = TRUE, na.rm = TRUE)
-    
-    output$summaryTable <- renderTable({
-        req(filtered_bulls())
-        req(input$selectedTraits)
-        
-        bulls_data <- filtered_bulls()
-        
-        if (nrow(bulls_data) == 0) {
-            return(data.frame(Trait = character(), Mean = numeric(), Min = numeric(), Max = numeric()))
-        }
-        
-        # Build summary stats only for selected traits
-        trait_data <- list()
-        trait_names <- c()
-        
-        trait_info <- list(
-            Weight = "Weight",
-            Milk = "Milk",
-            Quality = "Quality",
-            REA = "REA",
-            MARB = "MARB",
-            FAT = "FAT",
-            YLD = "YLD",
-            CW = "CW",
-            DOC = "DOC",
-            CONC = "CONC",
-            MAINT = "MAINT",
-            FDAM = "FDAM",
-            MRATE = "MRATE",
-            PELVIC = "PELVIC",
-            HEIGHT = "HEIGHT",
-            HYBRID = "HYBRID"
-        )
-        
-        for (trait in input$selectedTraits) {
-            if (trait %in% names(bulls_data)) {
-                trait_data[[trait]] <- list(
-                    Mean = mean(bulls_data[[trait]], na.rm = TRUE),
-                    Min = min(bulls_data[[trait]], na.rm = TRUE),
-                    Max = max(bulls_data[[trait]], na.rm = TRUE)
-                )
-                trait_names <- c(trait_names, trait)
-            }
-        }
-        
-        summary_stats <- data.frame(
-            Trait = trait_names,
-            Mean = sapply(trait_names, function(t) trait_data[[t]]$Mean),
-            Min = sapply(trait_names, function(t) trait_data[[t]]$Min),
-            Max = sapply(trait_names, function(t) trait_data[[t]]$Max),
-            stringsAsFactors = FALSE,
-            row.names = NULL
-        )
-        
-        # Format to 2 decimal places
-        summary_stats$Mean <- round(summary_stats$Mean, 2)
-        summary_stats$Min <- round(summary_stats$Min, 2)
-        summary_stats$Max <- round(summary_stats$Max, 2)
-        
-        summary_stats
-    }, striped = TRUE, hover = TRUE, bordered = TRUE)
-}
-
-# Flexible extraction function - tries multiple patterns
-extract_bulls_flexible <- function(text) {
-    bulls_df <- create_empty_bulls_df()
-    
-    # Pattern 1: Try to find EPD values with labels
-    patterns <- list(
-        # Pattern for "EPD: value" format
-        "EPD format" = list(
-            lot = "(?:Lot|LOT)\\s*[:#]?\\s*(\\S+)",
-            id = "(?:ID|Lot|#)\\s*[:#]?\\s*(\\S+)",
-            name = "(?:Name|Bull)\\s*[:#]?\\s*([A-Za-z0-9\\s-]+?)(?=Weight|WEIGHT|EPD)",
-            weight = "Weight\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            milk = "Milk\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            quality = "Quality\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            rea = "REA\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            marb = "MARB\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            fat = "FAT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            yld = "YLD\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            cw = "CW\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            doc = "DOC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            conc = "CONC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            maint = "MAINT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            fdam = "FDAM\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            mrate = "MRATE\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            pelvic = "PELVIC\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            height = "HEIGHT\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)",
-            hybrid = "HYBRID\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)"
-        )
     )
     
-    # Split by common delimiters that might separate bulls
-    potential_sections <- strsplit(text, "(?:Lot|ID|Bull)\\s*[:#]?\\s*(?=[A-Za-z0-9])", perl = TRUE)[[1]]
-    
-    for (section in potential_sections) {
-        if (nchar(section) > 20) {
-            tryCatch({
-                # Extract each field
-                lot <- extract_value(section, "(?:Lot|LOT)\\s*[:#]?\\s*(\\S+)")
-                id <- extract_value(section, "(?:ID|Lot|#)\\s*[:#]?\\s*(\\S+)")
-                name <- extract_value(section, "(?:Name|Bull)\\s*[:#]?\\s*([A-Za-z0-9\\s-]+?)(?=Weight|WEIGHT|EPD|Sire)")
-                weight <- extract_numeric_value(section, "Weight")
-                milk <- extract_numeric_value(section, "Milk")
-                quality <- extract_numeric_value(section, "Quality")
-                rea <- extract_numeric_value(section, "REA")
-                marb <- extract_numeric_value(section, "MARB")
-                fat <- extract_numeric_value(section, "FAT")
-                yld <- extract_numeric_value(section, "YLD")
-                cw <- extract_numeric_value(section, "CW")
-                doc <- extract_numeric_value(section, "DOC")
-                conc <- extract_numeric_value(section, "CONC")
-                maint <- extract_numeric_value(section, "MAINT")
-                fdam <- extract_numeric_value(section, "FDAM")
-                mrate <- extract_numeric_value(section, "MRATE")
-                pelvic <- extract_numeric_value(section, "PELVIC")
-                height <- extract_numeric_value(section, "HEIGHT")
-                hybrid <- extract_numeric_value(section, "HYBRID")
-                
-                # Only add if we have valid data
-                if (!is.na(id) && !is.na(name) && length(c(weight, milk, quality, rea, marb, fat, yld, cw, doc, conc, maint, fdam, mrate, pelvic, height, hybrid)) > 0) {
-                    if (sum(!is.na(c(weight, milk, quality, rea, marb, fat, yld, cw, doc, conc, maint, fdam, mrate, pelvic, height, hybrid))) >= 3) {
-                        bulls_df <- rbind(bulls_df, data.frame(
-                            Lot = as.character(if(is.na(lot)) "" else lot),
-                            ID = as.character(id),
-                            Name = as.character(name),
-                            Weight = as.numeric(weight),
-                            Milk = as.numeric(milk),
-                            Quality = as.numeric(quality),
-                            REA = as.numeric(rea),
-                            MARB = as.numeric(marb),
-                            FAT = as.numeric(fat),
-                            YLD = as.numeric(yld),
-                            CW = as.numeric(cw),
-                            DOC = as.numeric(doc),
-                            CONC = as.numeric(conc),
-                            MAINT = as.numeric(maint),
-                            FDAM = as.numeric(fdam),
-                            MRATE = as.numeric(mrate),
-                            PELVIC = as.numeric(pelvic),
-                            HEIGHT = as.numeric(height),
-                            HYBRID = as.numeric(hybrid),
-                            stringsAsFactors = FALSE
-                        ))
-                    }
-                }
-            }, error = function(e) {
-                # Skip problematic entries silently
-            })
+    # Display bulls table
+    output$bullsTable <- renderDataTable({
+        if (nrow(filtered_bulls()) == 0) {
+            return(data.frame())
         }
-    }
-    
-    return(bulls_df)
-}
-
-# Alternative extraction method - line by line
-extract_bulls_by_lines <- function(text) {
-    bulls_df <- create_empty_bulls_df()
-    
-    # Split into lines and look for numeric patterns
-    lines <- strsplit(text, "\\s{2,}")[[1]]
-    
-    i <- 1
-    while (i <= length(lines)) {
-        line <- lines[i]
         
-        tryCatch({
-            # Look for lines with lots of numbers (likely EPD lines)
-            if (grepl("\\d+", line) && nchar(line) > 30) {
-                # Try to extract numbers
-                numbers <- as.numeric(unlist(strsplit(gsub("[^0-9.-]", " ", line), "\\s+")))
-                numbers <- numbers[!is.na(numbers)]
-                
-                if (length(numbers) >= 8) {
-                    # Assume first number is Lot, second is ID, rest are EPDs
-                    bulls_df <- rbind(bulls_df, data.frame(
-                        Lot = as.character(numbers[1]),
-                        ID = as.character(numbers[2]),
-                        Name = paste("Bull", numbers[2]),
-                        Weight = numbers[3],
-                        Milk = numbers[4],
-                        Quality = numbers[5],
-                        REA = numbers[6],
-                        MARB = numbers[7],
-                        FAT = numbers[8],
-                        YLD = if(length(numbers) > 8) numbers[9] else NA,
-                        CW = if(length(numbers) > 9) numbers[10] else NA,
-                        DOC = if(length(numbers) > 10) numbers[11] else NA,
-                        CONC = if(length(numbers) > 11) numbers[12] else NA,
-                        MAINT = if(length(numbers) > 12) numbers[13] else NA,
-                        FDAM = if(length(numbers) > 13) numbers[14] else NA,
-                        MRATE = if(length(numbers) > 14) numbers[15] else NA,
-                        PELVIC = if(length(numbers) > 15) numbers[16] else NA,
-                        HEIGHT = if(length(numbers) > 16) numbers[17] else NA,
-                        HYBRID = if(length(numbers) > 17) numbers[18] else NA,
-                        stringsAsFactors = FALSE
-                    ))
-                }
-            }
-        }, error = function(e) {
-            # Skip
-        })
-        
-        i <- i + 1
-    }
+        filtered_bulls()[, c("Lot", "ID", "Name", "Weight", "Milk", "Quality", "REA", "MARB", "FAT", "YLD", "CW")]
+    }, options = list(pageLength = 10))
     
-    return(bulls_df)
-}
-
-# Advanced extraction method for different PDF formats (NEW)
-extract_bulls_advanced <- function(text) {
-    bulls_df <- create_empty_bulls_df()
+    # Display bull count
+    output$bullCount <- renderText({
+        paste("Total Bulls Matching Criteria:", nrow(filtered_bulls()), "of", nrow(all_bulls()))
+    })
     
-    # Split text into potential bull entries by looking for patterns
-    # This handles PDFs where bull info might be laid out differently
-    
-    # Try to find sections with consistent bull patterns
-    # Split by lot/id numbers followed by names
-    sections <- strsplit(text, "(?=^\\s*\\d{1,4}\\s+[A-Z])", perl = TRUE)[[1]]
-    
-    for (section in sections) {
-        if (nchar(section) > 30) {
-            tryCatch({
-                # Extract lot and ID from beginning
-                lot_id_match <- regmatches(section, regexpr("^\\s*(\\d{1,4})\\s+(\\d+|[A-Z][A-Za-z0-9]*)", section))
-                
-                if (length(lot_id_match) > 0) {
-                    parts <- trimws(unlist(strsplit(lot_id_match[1], "\\s+")))
-                    lot <- parts[1]
-                    id <- if(length(parts) > 1) parts[2] else parts[1]
-                    
-                    # Extract name (usually starts with capital letter after ID)
-                    name_match <- regmatches(section, regexpr("[A-Z][a-z]+(?:\\s+[A-Z][a-z]+)*", section))
-                    name <- if(length(name_match) > 0) name_match[1] else paste("Bull", id)
-                    
-                    # Extract all numbers from the section
-                    all_nums <- as.numeric(unlist(strsplit(gsub("[^0-9.-]", " ", section), "\\s+")))
-                    all_nums <- all_nums[!is.na(all_nums) & !is.infinite(all_nums)]
-                    
-                    # Filter out very large numbers that are probably not EPDs
-                    all_nums <- all_nums[abs(all_nums) < 1000]
-                    
-                    if (length(all_nums) >= 8) {
-                        # Skip the lot/ID numbers if they appear in the number list
-                        # Take the next 8+ numbers as EPD values
-                        epd_values <- head(all_nums, 16)
-                        
-                        bulls_df <- rbind(bulls_df, data.frame(
-                            Lot = as.character(lot),
-                            ID = as.character(id),
-                            Name = as.character(name),
-                            Weight = if(length(epd_values) > 0) epd_values[1] else NA,
-                            Milk = if(length(epd_values) > 1) epd_values[2] else NA,
-                            Quality = if(length(epd_values) > 2) epd_values[3] else NA,
-                            REA = if(length(epd_values) > 3) epd_values[4] else NA,
-                            MARB = if(length(epd_values) > 4) epd_values[5] else NA,
-                            FAT = if(length(epd_values) > 5) epd_values[6] else NA,
-                            YLD = if(length(epd_values) > 6) epd_values[7] else NA,
-                            CW = if(length(epd_values) > 7) epd_values[8] else NA,
-                            DOC = if(length(epd_values) > 8) epd_values[9] else NA,
-                            CONC = if(length(epd_values) > 9) epd_values[10] else NA,
-                            MAINT = if(length(epd_values) > 10) epd_values[11] else NA,
-                            FDAM = if(length(epd_values) > 11) epd_values[12] else NA,
-                            MRATE = if(length(epd_values) > 12) epd_values[13] else NA,
-                            PELVIC = if(length(epd_values) > 13) epd_values[14] else NA,
-                            HEIGHT = if(length(epd_values) > 14) epd_values[15] else NA,
-                            HYBRID = if(length(epd_values) > 15) epd_values[16] else NA,
-                            stringsAsFactors = FALSE
-                        ))
-                    }
-                }
-            }, error = function(e) {
-                # Skip problematic entries silently
-            })
+    # Download data
+    output$downloadData <- downloadHandler(
+        filename = function() {
+            paste("angus-bulls-", Sys.Date(), ".csv", sep = "")
+        },
+        content = function(file) {
+            write.csv(filtered_bulls(), file, row.names = FALSE)
         }
-    }
-    
-    # Remove duplicates based on ID
-    bulls_df <- bulls_df[!duplicated(bulls_df$ID), ]
-    
-    return(bulls_df)
-}
-
-# Helper function to create empty bulls dataframe (NEW)
-create_empty_bulls_df <- function() {
-    data.frame(
-        Lot = character(),
-        ID = character(),
-        Name = character(),
-        Weight = numeric(),
-        Milk = numeric(),
-        Quality = numeric(),
-        REA = numeric(),
-        MARB = numeric(),
-        FAT = numeric(),
-        YLD = numeric(),
-        CW = numeric(),
-        DOC = numeric(),
-        CONC = numeric(),
-        MAINT = numeric(),
-        FDAM = numeric(),
-        MRATE = numeric(),
-        PELVIC = numeric(),
-        HEIGHT = numeric(),
-        HYBRID = numeric(),
-        stringsAsFactors = FALSE
     )
-}
-
-# Helper function to extract string values
-extract_value <- function(text, pattern) {
-    match <- regmatches(text, regexpr(pattern, text, perl = TRUE, ignore.case = TRUE))
-    if (length(match) > 0 && nchar(match[1]) > 0) {
-        trimws(gsub(pattern, "\\1", match[1], perl = TRUE, ignore.case = TRUE))
-    } else {
-        NA
-    }
-}
-
-# Helper function to extract numeric values
-extract_numeric_value <- function(text, field_name) {
-    pattern <- paste0(field_name, "\\s*[:#]?\\s*([-+]?\\d+(?:\\.\\d+)?)")
-    match <- regmatches(text, regexpr(pattern, text, perl = TRUE, ignore.case = TRUE))
     
-    if (length(match) > 0 && nchar(match[1]) > 0) {
-        value_str <- gsub(paste0(field_name, "\\s*[:#]?\\s*"), "", match[1], ignore.case = TRUE)
-        as.numeric(trimws(value_str))
-    } else {
-        NA
-    }
+    # Summary statistics
+    output$stat_weight <- renderText({
+        if (nrow(filtered_bulls()) == 0) return("N/A")
+        round(mean(filtered_bulls()$Weight, na.rm = TRUE), 2)
+    })
+    
+    output$stat_milk <- renderText({
+        if (nrow(filtered_bulls()) == 0) return("N/A")
+        round(mean(filtered_bulls()$Milk, na.rm = TRUE), 2)
+    })
+    
+    output$stat_quality <- renderText({
+        if (nrow(filtered_bulls()) == 0) return("N/A")
+        round(mean(filtered_bulls()$Quality, na.rm = TRUE), 2)
+    })
+    
+    output$stat_rea <- renderText({
+        if (nrow(filtered_bulls()) == 0) return("N/A")
+        round(mean(filtered_bulls()$REA, na.rm = TRUE), 2)
+    })
+    
+    output$stat_marb <- renderText({
+        if (nrow(filtered_bulls()) == 0) return("N/A")
+        round(mean(filtered_bulls()$MARB, na.rm = TRUE), 2)
+    })
+    
+    output$stat_fat <- renderText({
+        if (nrow(filtered_bulls()) == 0) return("N/A")
+        round(mean(filtered_bulls()$FAT, na.rm = TRUE), 2)
+    })
+    
+    output$stat_yld <- renderText({
+        if (nrow(filtered_bulls()) == 0) return("N/A")
+        round(mean(filtered_bulls()$YLD, na.rm = TRUE), 2)
+    })
+    
+    output$stat_cw <- renderText({
+        if (nrow(filtered_bulls()) == 0) return("N/A")
+        round(mean(filtered_bulls()$CW, na.rm = TRUE), 2)
+    })
+    
+    # All bulls statistics
+    output$stat_weight_all <- renderText({
+        if (nrow(all_bulls()) == 0) return("N/A")
+        round(mean(all_bulls()$Weight, na.rm = TRUE), 2)
+    })
+    
+    output$stat_milk_all <- renderText({
+        if (nrow(all_bulls()) == 0) return("N/A")
+        round(mean(all_bulls()$Milk, na.rm = TRUE), 2)
+    })
+    
+    output$stat_quality_all <- renderText({
+        if (nrow(all_bulls()) == 0) return("N/A")
+        round(mean(all_bulls()$Quality, na.rm = TRUE), 2)
+    })
+    
+    output$stat_rea_all <- renderText({
+        if (nrow(all_bulls()) == 0) return("N/A")
+        round(mean(all_bulls()$REA, na.rm = TRUE), 2)
+    })
+    
+    output$stat_marb_all <- renderText({
+        if (nrow(all_bulls()) == 0) return("N/A")
+        round(mean(all_bulls()$MARB, na.rm = TRUE), 2)
+    })
+    
+    output$stat_fat_all <- renderText({
+        if (nrow(all_bulls()) == 0) return("N/A")
+        round(mean(all_bulls()$FAT, na.rm = TRUE), 2)
+    })
+    
+    output$stat_yld_all <- renderText({
+        if (nrow(all_bulls()) == 0) return("N/A")
+        round(mean(all_bulls()$YLD, na.rm = TRUE), 2)
+    })
+    
+    output$stat_cw_all <- renderText({
+        if (nrow(all_bulls()) == 0) return("N/A")
+        round(mean(all_bulls()$CW, na.rm = TRUE), 2)
+    })
+    
+    # Differences
+    output$stat_weight_diff <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("N/A")
+        diff <- round(mean(filtered_bulls()$Weight, na.rm = TRUE) - mean(all_bulls()$Weight, na.rm = TRUE), 2)
+        paste(if(diff > 0) "+" else "", diff)
+    })
+    
+    output$stat_milk_diff <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("N/A")
+        diff <- round(mean(filtered_bulls()$Milk, na.rm = TRUE) - mean(all_bulls()$Milk, na.rm = TRUE), 2)
+        paste(if(diff > 0) "+" else "", diff)
+    })
+    
+    output$stat_quality_diff <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("N/A")
+        diff <- round(mean(filtered_bulls()$Quality, na.rm = TRUE) - mean(all_bulls()$Quality, na.rm = TRUE), 2)
+        paste(if(diff > 0) "+" else "", diff)
+    })
+    
+    output$stat_rea_diff <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("N/A")
+        diff <- round(mean(filtered_bulls()$REA, na.rm = TRUE) - mean(all_bulls()$REA, na.rm = TRUE), 2)
+        paste(if(diff > 0) "+" else "", diff)
+    })
+    
+    output$stat_marb_diff <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("N/A")
+        diff <- round(mean(filtered_bulls()$MARB, na.rm = TRUE) - mean(all_bulls()$MARB, na.rm = TRUE), 2)
+        paste(if(diff > 0) "+" else "", diff)
+    })
+    
+    output$stat_fat_diff <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("N/A")
+        diff <- round(mean(filtered_bulls()$FAT, na.rm = TRUE) - mean(all_bulls()$FAT, na.rm = TRUE), 2)
+        paste(if(diff > 0) "+" else "", diff)
+    })
+    
+    output$stat_yld_diff <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("N/A")
+        diff <- round(mean(filtered_bulls()$YLD, na.rm = TRUE) - mean(all_bulls()$YLD, na.rm = TRUE), 2)
+        paste(if(diff > 0) "+" else "", diff)
+    })
+    
+    output$stat_cw_diff <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("N/A")
+        diff <- round(mean(filtered_bulls()$CW, na.rm = TRUE) - mean(all_bulls()$CW, na.rm = TRUE), 2)
+        paste(if(diff > 0) "+" else "", diff)
+    })
+    
+    # Insights
+    output$insights <- renderText({
+        if (nrow(filtered_bulls()) == 0 || nrow(all_bulls()) == 0) return("No data to analyze.")
+        
+        filtered_weight <- mean(filtered_bulls()$Weight, na.rm = TRUE)
+        all_weight <- mean(all_bulls()$Weight, na.rm = TRUE)
+        
+        filtered_milk <- mean(filtered_bulls()$Milk, na.rm = TRUE)
+        all_milk <- mean(all_bulls()$Milk, na.rm = TRUE)
+        
+        insights <- c()
+        
+        if (filtered_weight > all_weight + 5) {
+            insights <- c(insights, paste("✓ Your selection averages", round(filtered_weight - all_weight, 1), "lbs heavier than the sale average."))
+        } else if (filtered_weight < all_weight - 5) {
+            insights <- c(insights, paste("✓ Your selection averages", round(all_weight - filtered_weight, 1), "lbs lighter than the sale average."))
+        }
+        
+        if (filtered_milk > all_milk + 2) {
+            insights <- c(insights, paste("✓ Strong milking genetics selected (+", round(filtered_milk - all_milk, 1), " Milk EPD)."))
+        } else if (filtered_milk < all_milk - 2) {
+            insights <- c(insights, paste("✓ More moderate milk production selected (", round(filtered_milk - all_milk, 1), " Milk EPD)."))
+        }
+        
+        if (length(insights) == 0) {
+            insights <- "Your selection closely matches the sale average genetics."
+        }
+        
+        paste(insights, collapse = "\n")
+    })
 }
 
-# Run the application 
+# Run the app
 shinyApp(ui = ui, server = server)
