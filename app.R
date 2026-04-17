@@ -145,6 +145,7 @@ ui <- fluidPage(
                 border: 2px solid #ff8c00;
                 border-radius: 4px;
                 overflow: hidden;
+                width: 100%;
             }
             
             thead {
@@ -207,6 +208,13 @@ ui <- fluidPage(
             /* Western decoration elements */
             .container-fluid {
                 background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            }
+            
+            /* Table wrapper for scrolling */
+            .table-wrapper {
+                overflow-x: auto;
+                max-height: 800px;
+                overflow-y: auto;
             }
             
             /* Responsive adjustments */
@@ -329,7 +337,9 @@ ui <- fluidPage(
         
         mainPanel(
             h3("Filtered Bulls"),
-            tableOutput("bullTable"),
+            div(class = "table-wrapper",
+                tableOutput("bullTable")
+            ),
             hr(),
             h4("Summary Statistics"),
             tableOutput("summaryTable"),
@@ -340,6 +350,7 @@ ui <- fluidPage(
 
 # Define server logic
 server <- function(input, output) {
+    all_bulls <- reactiveVal(data.frame())
     filtered_bulls <- reactiveVal(data.frame())
     
     observeEvent(input$extractButton, {
@@ -371,6 +382,9 @@ server <- function(input, output) {
                 bulls_data <- extract_bulls_by_lines(full_text)
             }
             
+            # Store all bulls
+            all_bulls(bulls_data)
+            
             # Now filter the extracted bulls based on user inputs
             if (nrow(bulls_data) > 0) {
                 bulls_filtered <- apply_user_filters(bulls_data, input)
@@ -379,7 +393,7 @@ server <- function(input, output) {
                 message_text <- if (nrow(bulls_filtered) == 0) {
                     paste("Extracted", nrow(bulls_data), "bulls total, but 0 match your specified ranges.")
                 } else {
-                    paste("Successfully extracted and filtered", nrow(bulls_filtered), "bulls matching your criteria!")
+                    paste("Successfully extracted", nrow(bulls_data), "bulls total.", nrow(bulls_filtered), "bulls match your selected criteria!")
                 }
                 
                 output$progress <- renderText(message_text)
@@ -394,6 +408,56 @@ server <- function(input, output) {
         })
     })
     
+    # Update filtered bulls when filters change
+    observeEvent({
+        input$minWeight
+        input$maxWeight
+        input$minMilk
+        input$maxMilk
+        input$minQuality
+        input$maxQuality
+        input$minREA
+        input$maxREA
+        input$minMARB
+        input$maxMARB
+        input$minFAT
+        input$maxFAT
+        input$minYLD
+        input$maxYLD
+        input$minCW
+        input$maxCW
+        input$minDoc
+        input$maxDoc
+        input$minConc
+        input$maxConc
+        input$minMaint
+        input$maxMaint
+        input$minFdam
+        input$maxFdam
+        input$minMrate
+        input$maxMrate
+        input$minPelvic
+        input$maxPelvic
+        input$minHeight
+        input$maxHeight
+        input$minHybrid
+        input$maxHybrid
+        input$selectedTraits
+    }, {
+        if (nrow(all_bulls()) > 0) {
+            bulls_filtered <- apply_user_filters(all_bulls(), input)
+            filtered_bulls(bulls_filtered)
+            
+            if (nrow(bulls_filtered) > 0) {
+                message_text <- paste(nrow(bulls_filtered), "bull(s) match your selected criteria!")
+            } else {
+                message_text <- "No bulls match your selected criteria. Try adjusting your ranges."
+            }
+            
+            output$progress <- renderText(message_text)
+        }
+    })
+    
     # Function to apply filters based on user inputs
     apply_user_filters <- function(bulls_data, input) {
         result <- bulls_data
@@ -401,97 +465,97 @@ server <- function(input, output) {
         # Apply Weight filter
         if ("Weight" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(Weight) | (Weight >= input$minWeight & Weight <= input$maxWeight)))
+                filter(is.na(Weight) | (Weight >= input$minWeight & Weight <= input$maxWeight))
         }
         
         # Apply Milk filter
         if ("Milk" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(Milk) | (Milk >= input$minMilk & Milk <= input$maxMilk)))
+                filter(is.na(Milk) | (Milk >= input$minMilk & Milk <= input$maxMilk))
         }
         
         # Apply Quality filter
         if ("Quality" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(Quality) | (Quality >= input$minQuality & Quality <= input$maxQuality)))
+                filter(is.na(Quality) | (Quality >= input$minQuality & Quality <= input$maxQuality))
         }
         
         # Apply REA filter
         if ("REA" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(REA) | (REA >= input$minREA & REA <= input$maxREA)))
+                filter(is.na(REA) | (REA >= input$minREA & REA <= input$maxREA))
         }
         
         # Apply MARB filter
         if ("MARB" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(MARB) | (MARB >= input$minMARB & MARB <= input$maxMARB)))
+                filter(is.na(MARB) | (MARB >= input$minMARB & MARB <= input$maxMARB))
         }
         
         # Apply FAT filter
         if ("FAT" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(FAT) | (FAT >= input$minFAT & FAT <= input$maxFAT)))
+                filter(is.na(FAT) | (FAT >= input$minFAT & FAT <= input$maxFAT))
         }
         
         # Apply YLD filter
         if ("YLD" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(YLD) | (YLD >= input$minYLD & YLD <= input$maxYLD)))
+                filter(is.na(YLD) | (YLD >= input$minYLD & YLD <= input$maxYLD))
         }
         
         # Apply CW filter
         if ("CW" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(CW) | (CW >= input$minCW & CW <= input$maxCW)))
+                filter(is.na(CW) | (CW >= input$minCW & CW <= input$maxCW))
         }
         
         # Apply DOC filter
         if ("DOC" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(DOC) | (DOC >= input$minDoc & DOC <= input$maxDoc)))
+                filter(is.na(DOC) | (DOC >= input$minDoc & DOC <= input$maxDoc))
         }
         
         # Apply CONC filter
         if ("CONC" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(CONC) | (CONC >= input$minConc & CONC <= input$maxConc)))
+                filter(is.na(CONC) | (CONC >= input$minConc & CONC <= input$maxConc))
         }
         
         # Apply MAINT filter
         if ("MAINT" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(MAINT) | (MAINT >= input$minMaint & MAINT <= input$maxMaint)))
+                filter(is.na(MAINT) | (MAINT >= input$minMaint & MAINT <= input$maxMaint))
         }
         
         # Apply FDAM filter
         if ("FDAM" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(FDAM) | (FDAM >= input$minFdam & FDAM <= input$maxFdam)))
+                filter(is.na(FDAM) | (FDAM >= input$minFdam & FDAM <= input$maxFdam))
         }
         
         # Apply MRATE filter
         if ("MRATE" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(MRATE) | (MRATE >= input$minMrate & MRATE <= input$maxMrate)))
+                filter(is.na(MRATE) | (MRATE >= input$minMrate & MRATE <= input$maxMrate))
         }
         
         # Apply PELVIC filter
         if ("PELVIC" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(PELVIC) | (PELVIC >= input$minPelvic & PELVIC <= input$maxPelvic)))
+                filter(is.na(PELVIC) | (PELVIC >= input$minPelvic & PELVIC <= input$maxPelvic))
         }
         
         # Apply HEIGHT filter
         if ("HEIGHT" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(HEIGHT) | (HEIGHT >= input$minHeight & HEIGHT <= input$maxHeight)))
+                filter(is.na(HEIGHT) | (HEIGHT >= input$minHeight & HEIGHT <= input$maxHeight))
         }
         
         # Apply HYBRID filter
         if ("HYBRID" %in% input$selectedTraits) {
             result <- result %>%
-                filter((is.na(HYBRID) | (HYBRID >= input$minHybrid & HYBRID <= input$maxHybrid)))
+                filter(is.na(HYBRID) | (HYBRID >= input$minHybrid & HYBRID <= input$maxHybrid))
         }
         
         return(result)
@@ -515,7 +579,7 @@ server <- function(input, output) {
                          "DOC", "CONC", "MAINT", "FDAM", "MRATE", "PELVIC", "HEIGHT", "HYBRID")
         
         for (trait in trait_order) {
-            if (trait %in% input$selectedTraits) {
+            if (trait %in% input$selectedTraits && trait %in% names(displayed_bulls)) {
                 cols_to_select <- c(cols_to_select, trait)
             }
         }
@@ -523,9 +587,10 @@ server <- function(input, output) {
         # Format the output
         displayed_bulls %>%
             select(all_of(cols_to_select)) %>%
-            arrange(Lot, ID)
+            arrange(as.numeric(Lot), as.numeric(ID)) %>%
+            mutate(across(where(is.numeric), ~round(., 2)))
         
-    }, striped = TRUE, hover = TRUE, bordered = TRUE)
+    }, striped = TRUE, hover = TRUE, bordered = TRUE, na.rm = TRUE)
     
     output$summaryTable <- renderTable({
         req(filtered_bulls())
@@ -754,7 +819,7 @@ extract_bulls_by_lines <- function(text) {
                         REA = numbers[6],
                         MARB = numbers[7],
                         FAT = numbers[8],
-                        YLD = numbers[9],
+                        YLD = if(length(numbers) > 8) numbers[9] else NA,
                         CW = if(length(numbers) > 9) numbers[10] else NA,
                         DOC = if(length(numbers) > 10) numbers[11] else NA,
                         CONC = if(length(numbers) > 11) numbers[12] else NA,
