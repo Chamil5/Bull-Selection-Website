@@ -10,6 +10,215 @@ options(shiny.maxRequestSize = 200 * 1024^2)  # 200 MB
 ui <- fluidPage(
     useShinyjs(),
     
+    # Western Theme CSS
+    tags$head(
+        tags$style(HTML("
+            /* Main background and text */
+            body {
+                background-color: #1a1a1a;
+                color: #fff;
+                font-family: 'Georgia', serif;
+            }
+            
+            /* Title styling */
+            .navbar-default {
+                background-color: #2d2d2d;
+                border-color: #ff8c00;
+                border-bottom: 4px solid #ff8c00;
+            }
+            
+            .page-header {
+                border-bottom: 3px solid #ff8c00;
+                padding-bottom: 20px;
+                margin-bottom: 30px;
+            }
+            
+            .page-header h1 {
+                color: #ff8c00;
+                text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+                font-weight: bold;
+                letter-spacing: 2px;
+            }
+            
+            /* Sidebar styling */
+            .well {
+                background-color: #2d2d2d;
+                border: 2px solid #ff8c00;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+            }
+            
+            /* Section headers */
+            h4 {
+                color: #ff8c00;
+                font-weight: bold;
+                border-bottom: 2px solid #ff8c00;
+                padding-bottom: 8px;
+                margin-top: 20px;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            
+            h3 {
+                color: #ff8c00;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            
+            /* Button styling */
+            .btn-primary {
+                background-color: #ff8c00;
+                border-color: #1a1a1a;
+                color: #000;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                border: 2px solid #000;
+                transition: all 0.3s ease;
+            }
+            
+            .btn-primary:hover {
+                background-color: #e67e00;
+                border-color: #ff8c00;
+                color: #fff;
+                box-shadow: 0 0 15px rgba(255, 140, 0, 0.6);
+            }
+            
+            .btn-primary:focus {
+                background-color: #ff8c00;
+                border-color: #1a1a1a;
+                box-shadow: 0 0 10px rgba(255, 140, 0, 0.4);
+            }
+            
+            .btn-lg {
+                padding: 15px 30px;
+                font-size: 16px;
+                width: 100%;
+                margin-bottom: 20px;
+            }
+            
+            /* Input fields */
+            input[type='text'],
+            input[type='number'],
+            select {
+                background-color: #1a1a1a;
+                color: #ff8c00;
+                border: 2px solid #ff8c00;
+                border-radius: 4px;
+                padding: 8px 12px;
+            }
+            
+            input[type='text']:focus,
+            input[type='number']:focus,
+            select:focus {
+                background-color: #2d2d2d;
+                color: #fff;
+                border-color: #ff8c00;
+                box-shadow: 0 0 10px rgba(255, 140, 0, 0.3);
+            }
+            
+            /* Checkbox styling */
+            .checkbox {
+                color: #ff8c00;
+            }
+            
+            .checkbox input[type='checkbox'] {
+                accent-color: #ff8c00;
+            }
+            
+            .checkbox label {
+                color: #fff;
+                margin-left: 8px;
+            }
+            
+            /* Horizontal rule */
+            hr {
+                border-color: #ff8c00;
+                margin: 20px 0;
+            }
+            
+            /* Table styling */
+            table {
+                background-color: #2d2d2d;
+                color: #fff;
+                border: 2px solid #ff8c00;
+                border-radius: 4px;
+                overflow: hidden;
+            }
+            
+            thead {
+                background-color: #ff8c00;
+                color: #000;
+                font-weight: bold;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+            }
+            
+            tbody tr:nth-child(odd) {
+                background-color: #1a1a1a;
+            }
+            
+            tbody tr:nth-child(even) {
+                background-color: #2d2d2d;
+            }
+            
+            tbody tr:hover {
+                background-color: #3d3d3d;
+                box-shadow: inset 0 0 10px rgba(255, 140, 0, 0.2);
+            }
+            
+            /* Progress message */
+            #progress {
+                color: #ff8c00;
+                font-weight: bold;
+                padding: 12px;
+                background-color: #2d2d2d;
+                border-left: 4px solid #ff8c00;
+                margin: 15px 0;
+                border-radius: 4px;
+            }
+            
+            /* File input */
+            .form-group {
+                margin-bottom: 20px;
+            }
+            
+            label {
+                color: #ff8c00;
+                font-weight: bold;
+                display: block;
+                margin-bottom: 8px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+            }
+            
+            /* Main panel */
+            .form-control {
+                background-color: #1a1a1a;
+                border: 2px solid #ff8c00;
+                color: #ff8c00;
+            }
+            
+            /* Western decoration elements */
+            .container-fluid {
+                background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%);
+            }
+            
+            /* Responsive adjustments */
+            @media (max-width: 768px) {
+                .page-header h1 {
+                    font-size: 24px;
+                }
+                
+                .btn-lg {
+                    padding: 10px 20px;
+                    font-size: 14px;
+                }
+            }
+        "))
+    ),
+    
     titlePanel("Bull EPD Selection"),
     
     sidebarLayout(
